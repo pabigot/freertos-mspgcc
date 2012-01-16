@@ -23,3 +23,6 @@ paths into the unmodified distribution should be subordinate to the
 corresponding paths in this project, to ensure overrides occur where
 necessary.
 
+Sources in this repository that are derivative of FreeRTOS sources are
+subject to the licensing of FreeRTOS.  Original sources are currently
+released under BSD-3-Clause.
