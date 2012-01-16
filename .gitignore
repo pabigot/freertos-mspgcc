@@ -1,0 +1,4 @@
+# Ignore object files and libraries
+*.[oa]
+# Ignore elf binaries
+*.elf
