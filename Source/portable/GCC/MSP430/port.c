@@ -294,8 +294,10 @@ void vPortYield( void )
 #define TACTL TA0CTL
 #define TACCR0 TA0CCR0
 #define TACCTL0 TA0CCTL0
-#define TIMERA0_VECTOR TIMER0_A0_VECTOR
 #endif /* TACTL */
+#ifndef TIMERA0_VECTOR
+#define TIMERA0_VECTOR TIMER0_A0_VECTOR
+#endif /* TIMERA0_VECTOR */
 
 /*
  * Hardware initialisation to generate the RTOS tick.  This uses timer 0
