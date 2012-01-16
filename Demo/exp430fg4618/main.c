@@ -33,35 +33,23 @@ POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "FreeRTOS.h"
-#include "utility/led.h"
+#include "task.h"
+
+#define mainLED_TASK_PRIORITY ( tskIDLE_PRIORITY + 1 )
 
 static void prvSetupHardware( void );
 
-int main( void )
+void main( void )
 {
 	unsigned portBASE_TYPE uxCounter;
 	
 	prvSetupHardware();
 	vParTestInitialise();
 
-	uxCounter = 0;
-	while (1)
-	{
-		if (uxCounter & 1)
-		{
-			vParTestToggleLED( 0 );
-		}
-		if (uxCounter & 2)
-		{
-			vParTestToggleLED( 1 );
-		}
-		if (uxCounter & 4)
-		{
-			vParTestToggleLED( 2 );
-		}
-		__delay_cycles(100000);
-		++uxCounter;
-	}
+	vStartLEDFlashTasks( mainLED_TASK_PRIORITY );
+
+	/* Start the scheduler. */
+	vTaskStartScheduler();
 }
 
 void vApplicationIdleHook( void ) { }
@@ -70,6 +58,8 @@ static void prvSetupHardware( void )
 {
 	WDTCTL = WDTPW + WDTHOLD;
 }
+
+#include "utility/led.h"
 
 const xLEDDefn pxLEDDefn[] = {
 	{ .pucPxOUT = &P5OUT, .ucBIT = BIT1 }, /* Red */
