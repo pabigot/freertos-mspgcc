@@ -57,6 +57,7 @@ $(SOURCE_PATH)/portable/MemMang/heap_1.c \
 $(PORT_PATH)/port.c \
 $(DEMO_PATH)/flash.c \
 $(BSP430_PATH)/utility/led.c \
+$(BSP430_PATH)/clocks/fllplus.c \
 $(BSP430_PATH)/ParTest.c \
 main.c
 

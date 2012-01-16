@@ -32,58 +32,26 @@ POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-#include "FreeRTOS.h"
-#include "task.h"
 #include "clocks/fllplus.h"
 
-#define mainLED_TASK_PRIORITY ( tskIDLE_PRIORITY + 1 )
-
-static void prvSetupHardware( void );
-
-void main( void )
+unsigned char ucBSP430fllplusConfigure( const xFLLPLUSDefn * pxConfig )
 {
-	unsigned portBASE_TYPE uxCounter;
+	unsigned char ucReturnValue;
+	unsigned portBASE_TYPE uxStableLoopsLeft = 100;
 	
-	prvSetupHardware();
-	vParTestInitialise();
+	portENTER_CRITICAL();
 
-	vStartLEDFlashTasks( mainLED_TASK_PRIORITY );
+	FLL_CTL0 = pxConfig->ucFLL_CTL0;
+	FLL_CTL1 = pxConfig->ucFLL_CTL1;
+	do {
+		IFG1 &= ~OFIFG;
+		__delay_cycles(20000);
+		--uxStableLoopsLeft;
+	} while ((IFG1 & OFIFG) && (0 < uxStableLoopsLeft));
+	ucReturnValue = !(IFG1 & OFIFG);
+	SCFI0 = pxConfig->ucSCFI0;
+	SCFQCTL = pxConfig->ucSCFQCTL;
 
-	/* Start the scheduler. */
-	vTaskStartScheduler();
+	portEXIT_CRITICAL();
+	return ucReturnValue;
 }
-
-void vApplicationIdleHook( void ) { }
-
-static void prvSetupHardware( void )
-{
-	xFLLPLUSDefn xFLLPlus;
-	
-	WDTCTL = WDTPW + WDTHOLD;
-
-	/* Most examples use XCAP14PF, but my crude tests suggest that of
-	 * the capacitances available 0pF produces the closest to 32768
-	 * Hz. */
-	xFLLPlus.ucFLL_CTL0 = DCOPLUS | XCAP0PF;
-	/* Retain power-up default in this case */
-	xFLLPlus.ucFLL_CTL1 = XT2OFF;
-	/* Configure for 2 * (121 + 1) * 32768 = 7995392 Hz */
-	xFLLPlus.ucSCFI0 = FLLD_2 | FN_4;
-	xFLLPlus.ucSCFQCTL = 121;
-	( void ) ucBSP430fllplusConfigure( &xFLLPlus );
-
-	/* For verification, bring out the clock signals: ACLK on P1.5
-	 * (H2.6), MCLK on P1.1(H2.2), SMCLK on P1.4 (H2.5). */
-	P1SEL |= BIT1 | BIT4 | BIT5;
-	P1DIR |= BIT1 | BIT4 | BIT5;
-}
-
-#include "utility/led.h"
-
-const xLEDDefn pxLEDDefn[] = {
-	{ .pucPxOUT = &P5OUT, .ucBIT = BIT1 }, /* Red */
-	{ .pucPxOUT = &P2OUT, .ucBIT = BIT2 }, /* Green */
-	{ .pucPxOUT = &P2OUT, .ucBIT = BIT1 }, /* Yellow */
-};
-const unsigned char ucLEDDefnCount = sizeof(pxLEDDefn) / sizeof(*pxLEDDefn);
-
