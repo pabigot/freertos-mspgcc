@@ -42,7 +42,8 @@ CC=$(CROSS_COMPILE)gcc
 LD=$(CROSS_COMPILE)ld
 AR=$(CROSS_COMPILE)ar
 
-OPT_CFLAGS ?= -Os
+OPT_CFLAGS ?= -Os -ffunction-sections -fdata-sections
+LDFLAGS ?= -Wl,-gc-sections
 
 CPPFLAGS = -I. -I$(BSP430_PATH) -I$(PORT_PATH)
 CPPFLAGS += -I$(SOURCE_PATH)/include

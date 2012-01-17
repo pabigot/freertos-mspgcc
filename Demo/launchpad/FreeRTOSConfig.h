@@ -76,10 +76,11 @@
 #define configTICK_RATE_HZ			( ( portTickType ) 1000 )
 #define configMAX_PRIORITIES		( ( unsigned portBASE_TYPE ) 4 )
 #define configMINIMAL_STACK_SIZE	( ( unsigned short ) 50 )
-/* The msp430fg4618 has 8 kiB of RAM; leave a little for static
- * allocations. */
-#define configTOTAL_HEAP_SIZE		( ( size_t ) ( 100 ) )
-#define configMAX_TASK_NAME_LEN		( 6 )
+/* The msp430g2553 has 512 B of RAM.  298 is the minimum to
+   successfully allocate the coroutines; more than that starts causing
+   stack overwrites. */
+#define configTOTAL_HEAP_SIZE		( ( size_t ) ( 298 ) )
+#define configMAX_TASK_NAME_LEN		( 1 )
 #define configUSE_TRACE_FACILITY	0
 #define configUSE_16_BIT_TICKS		1
 #define configIDLE_SHOULD_YIELD		1
@@ -97,6 +98,6 @@ to exclude the API function. */
 #define INCLUDE_vTaskCleanUpResources	0
 #define INCLUDE_vTaskSuspend			0
 #define INCLUDE_vTaskDelayUntil			0
-#define INCLUDE_vTaskDelay				1
+#define INCLUDE_vTaskDelay				0
 
 #endif /* FREERTOS_CONFIG_H */

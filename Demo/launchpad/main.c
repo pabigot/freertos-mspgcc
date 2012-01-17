@@ -34,8 +34,10 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "FreeRTOS.h"
 #include "task.h"
+#include "croutine.h"
 
-#define mainLED_TASK_PRIORITY ( tskIDLE_PRIORITY + 1 )
+/* The number of flash co-routines to create. */
+#define mainNUM_FLASH_CO_ROUTINES       ( 2 )
 
 static void prvSetupHardware( void );
 
@@ -45,30 +47,27 @@ void main( void )
 	
 	prvSetupHardware();
 	vParTestInitialise();
-	uxCounter = 0;
-	while (1)
-	{
-		if (uxCounter & 1)
-		{
-			vParTestToggleLED( 0 );
-		}
-		if (uxCounter & 2)
-		{
-			vParTestToggleLED( 1 );
-		}
-		__delay_cycles(100000);
-		++uxCounter;
-	}
 
-#if 0
-	vStartLEDFlashTasks( mainLED_TASK_PRIORITY );
+	vStartFlashCoRoutines( mainNUM_FLASH_CO_ROUTINES );
 
 	/* Start the scheduler. */
 	vTaskStartScheduler();
-#endif
+	vParTestSetLED( 0, 1 );
+	__disable_interrupt();
+	while (1) {
+		P1OUT ^= BIT0 | BIT6;
+		__delay_cycles(50000);
+	}
 }
 
-void vApplicationIdleHook( void ) { }
+void vApplicationIdleHook( void )
+{
+	/* Schedule the co-routines. */
+	for( ;; )
+	{
+		vCoRoutineSchedule();
+	}
+}
 
 static void prvSetupHardware( void )
 {
