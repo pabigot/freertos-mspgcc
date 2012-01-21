@@ -73,7 +73,11 @@
 not the MCLK. */
 #define portACLK_FREQUENCY_HZ			( ( portTickType ) 32768 )
 #define portINITIAL_CRITICAL_NESTING	( ( unsigned short ) 10 )
-#define portTASK_INITIAL_R2	( ( portSTACK_TYPE ) GIE )
+#if portDISABLE_FLL
+#define portTASK_INITIAL_R2	( ( portSTACK_TYPE ) ( GIE | SCG0 ) )
+#else /* portDISABLE_FLL */
+#define portTASK_INITIAL_R2 ( ( portSTACK_TYPE ) GIE )
+#endif /* portDISABLE_FLL */
 
 /* We require the address of the pxCurrentTCB variable, but don't want to know
 any details of its type. */

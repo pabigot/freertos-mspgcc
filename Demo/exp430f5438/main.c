@@ -35,10 +35,46 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "FreeRTOS.h"
 #include "task.h"
 #include "clocks/ucs.h"
+#include <stdio.h>
 
 #define mainLED_TASK_PRIORITY ( tskIDLE_PRIORITY + 1 )
+#define mainSHOWDCO_TASK_PRIORITY ( tskIDLE_PRIORITY + 1 )
 
 static void prvSetupHardware( void );
+
+static void showDCO ()
+{
+	unsigned portBASE_TYPE ctl0a;
+	unsigned portBASE_TYPE ctl0b;
+		
+	portENTER_CRITICAL();
+	ctl0a = UCSCTL0;
+	do {
+		ctl0b = UCSCTL0;
+		if (ctl0a == ctl0b) {
+			break;
+		}
+		ctl0a = UCSCTL0;
+	} while (ctl0a != ctl0b);
+	portEXIT_CRITICAL();
+
+	printf( "UCS: SR 0x%02x RSEL %u DCO %u MOD %u\n", __read_status_register(), 0x07 & (UCSCTL1 >> 4), 0x1f & (ctl0a >> 8), 0x1f & (ctl0a >> 3));
+}
+
+static portTASK_FUNCTION( vShowDCO, pvParameters )
+{
+	portTickType xLastWakeTime;
+
+	( void ) pvParameters;
+	xLastWakeTime = xTaskGetTickCount();
+
+	for(;;)
+	{
+		vTaskDelayUntil( &xLastWakeTime, 1000 );
+		showDCO();
+	}
+}
+
 
 void main( void )
 {
@@ -47,7 +83,11 @@ void main( void )
 	prvSetupHardware();
 	vParTestInitialise();
 
+	showDCO();
+	printf("Up and running\n");
 	vStartLEDFlashTasks( mainLED_TASK_PRIORITY );
+
+	xTaskCreate( vShowDCO, ( signed char * ) "SDCO", 128, NULL, mainSHOWDCO_TASK_PRIORITY, ( xTaskHandle * ) NULL );
 
 	/* Start the scheduler. */
 	vTaskStartScheduler();
@@ -73,6 +113,26 @@ static void prvSetupHardware( void )
 
 	ulBSP430ucsConfigure( configCPU_CLOCK_HZ, -1 );
 
+	/* Hold the UART in reset during configuration */
+	UCA1CTL1 |= UCSWRST;
+	UCA1CTLW0 = UCSWRST | UCSSEL__ACLK;
+	UCA1BRW = 3;
+	UCA1MCTL = (0 * UCBRF_1) | (3 * UCBRS_1);
+	P5SEL |= BIT6 | BIT7;
+	UCA1CTL1 &= ~UCSWRST;
+}
+
+int
+putchar (int c)
+{
+  /* Spin until tx buffer ready */
+  while (!(UCA1IFG & UCTXIFG)) {
+    ;
+  }
+  /* Transmit the character */
+  UCA1TXBUF = c;
+
+  return c;
 }
 
 #include "utility/led.h"

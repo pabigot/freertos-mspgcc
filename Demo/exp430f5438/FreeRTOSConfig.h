@@ -68,10 +68,15 @@
  * See http://www.freertos.org/a00110.html.
  *----------------------------------------------------------*/
 
+/* If defined to 1, SCG0 will be set in all tasks, disabling FLL
+ * If defined to 0, SCG0 will be cleared, enabling FLL
+ * If not defined, FLL will be disabled on platforms subject to UCS10 */
+#define portDISABLE_FLL 0
+
 #define configUSE_PREEMPTION		1
 #define configUSE_IDLE_HOOK			1
 #define configUSE_TICK_HOOK			0
-#define configCPU_CLOCK_HZ			( ( unsigned long ) 16000000 ) /* Clock setup from main.c in the demo application. */
+#define configCPU_CLOCK_HZ			( ( unsigned long ) 8000000 ) /* Clock setup from main.c in the demo application. */
 #define configTICK_RATE_HZ			( ( portTickType ) 1000 )
 #define configMAX_PRIORITIES		( ( unsigned portBASE_TYPE ) 4 )
 #define configMINIMAL_STACK_SIZE	( ( unsigned short ) 50 )

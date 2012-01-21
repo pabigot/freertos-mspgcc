@@ -147,11 +147,16 @@ extern void vPortYield( void ) __attribute__ ( ( __naked__ ) );
  * running the FLL periodically.  Ensure that we don't re-enable it
  * when leaving a low-power mode or during context switches. */
 
+#if ! defined( portDISABLE_FLL )
 #if defined(__MSP430_HAS_UCS__) || defined(__MSP430_HAS_UCS_RF__)
-#define portLPM_bits ( SCG1 + OSCOFF + CPUOFF )
-#else
-#define portLPM_bits LPM4_bits
+#define portDISABLE_FLL 1
 #endif
+#endif
+#if portDISABLE_FLL
+#define portLPM_bits ( SCG1 + OSCOFF + CPUOFF )
+#else /* portDISABLE_FLL */
+#define portLPM_bits LPM4_bits
+#endif /* portDISABLE_FLL */
 
 #ifdef __cplusplus
 }

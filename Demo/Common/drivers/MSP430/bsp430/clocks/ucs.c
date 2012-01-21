@@ -102,8 +102,10 @@ unsigned long ulBSP430ucsConfigure ( unsigned long ulFrequency_Hz,
 		SFRIFG1 &= ~OFIFG;
 	} while (UCSCTL7 & DCOFFG);
 
+#if portDISABLE_FLL
 	/* Turn off FLL */
 	__bis_status_register(SCG0);
+#endif
 	
 	portEXIT_CRITICAL();
 }

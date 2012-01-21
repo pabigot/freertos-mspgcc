@@ -75,7 +75,7 @@ HDLC interface, 115200 8N1 or faster
 USCI_A1
 -------
 
-Standard console, 115200 8N1
+Standard console, 9600 8N1 clocked by ACLK at 32768 Hz.
 
 
 ADC12
