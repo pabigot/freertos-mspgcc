@@ -168,11 +168,13 @@ volatile unsigned short usCriticalNesting = portINITIAL_CRITICAL_NESTING;
 						   "pop	r15				\n\t"	\
 						   "mov.w	r15, %0		\n\t"	\
 						   portASM_POP_GEN_REGS			\
-						   "bic	#0xf0, @r1		\n\t"	\
+						   "bic	%2, @r1			\n\t"	\
 						   "reti				\n\t"	\
 						   : "=m"( usCriticalNesting )	\
-						   : "m"( pxCurrentTCB )		\
+						   : "m"( pxCurrentTCB ),		\
+							 "i"( portLPM_bits )		\
 						   );
+
 /*-----------------------------------------------------------*/
 
 /*

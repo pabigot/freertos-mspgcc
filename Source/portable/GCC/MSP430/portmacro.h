@@ -123,6 +123,7 @@ extern volatile unsigned portSHORT usCriticalNesting;							\
 		}																		\
 	}																			\
 }
+
 /*-----------------------------------------------------------*/
 
 /* Task utilities. */
@@ -140,6 +141,17 @@ extern void vPortYield( void ) __attribute__ ( ( __naked__ ) );
 /* Task function macros as described on the FreeRTOS.org WEB site. */
 #define portTASK_FUNCTION_PROTO( vFunction, pvParameters ) void vFunction( void *pvParameters )
 #define portTASK_FUNCTION( vFunction, pvParameters ) void vFunction( void *pvParameters )
+
+/* If we're using the UCS, there are two major chip errata which can
+ * cause clock anomalies: UCS7 and UCS10.  We work around them by only
+ * running the FLL periodically.  Ensure that we don't re-enable it
+ * when leaving a low-power mode or during context switches. */
+
+#if defined(__MSP430_HAS_UCS__) || defined(__MSP430_HAS_UCS_RF__)
+#define portLPM_bits ( SCG1 + OSCOFF + CPUOFF )
+#else
+#define portLPM_bits LPM4_bits
+#endif
 
 #ifdef __cplusplus
 }
