@@ -57,7 +57,22 @@ void vApplicationIdleHook( void ) { }
 
 static void prvSetupHardware( void )
 {
+	/* Hold off watchdog */
 	WDTCTL = WDTPW + WDTHOLD;
+
+	/* Enable XT1 functions */
+	P7SEL |= BIT0;
+
+	/* P11.0: ACLK ; P11.1: MCLK; P11.2: SMCLK ; all available on test
+	 * points */
+	P11SEL |= BIT0 | BIT1 | BIT2;
+	P11DIR |= BIT0 | BIT1 | BIT2;
+
+	TA0CTL = TASSEL__ACLK | MC__CONTINOUS;
+	TB0CTL = TASSEL__SMCLK | MC__STOP;
+
+	ulBSP430ucsConfigure( configCPU_CLOCK_HZ, -1 );
+
 }
 
 #include "utility/led.h"

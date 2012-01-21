@@ -43,51 +43,12 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "FreeRTOS.h"
 
-#if 0
-
-/** Structure used to configure the frequency-locked loop clock module.
- *
- * The structure fields are assigned in the listed order.  See the 4xx
- * Family User's Guide for details, but in short the DCO frequency
- * will be (N+1)*f_crystal, optionally scaled by a feedback
- * pre-divider (multiplying the output frequency).
- */
-typedef struct xUCS_DEFN {
-	/** Value for FLL_CTL0.  This configures the pre-divider DCOPLUS,
-	 * the LFTX1 mode XTS_FLL, and the oscilator capacitor.  Other
-	 * bits denote oscillator faults and are read-only. */
-	unsigned char ucFLL_CTL0;
-
-	/** Value for FLL_CTL1.  This selects among the crystal sources
-	 * and in some cases changes the source clock for MCLK and SMCLK.
-	 * The power-up value of XT2OFF is generally appropriate. */
-	unsigned char ucFLL_CTL1;
-
-	/** Value for SCFI0.  This sets the FLL+ loop divider FLLDx, and
-	 * the DCO range control FN_x.  The MODx bits should be left as
-	 * zero in most uses, as the FLL will update them
-	 * automatically. */
-	unsigned char ucSCFI0;
-
-	/** Value for SCFQCTL.  This enables/disables modulation through
-	 * SCFQ_M, and sets the DCO multiplier N.  The value of the low 7
-	 * bits must not be zero. */
-	unsigned char ucSCFQCTL;
-
-} xUCSDefn;
-
-/** Call this to reconfigure the FLL+ peripheral.
- *
- * The relevant FLL+ registers are configured as requested.
- *
- * @note On 5xx-family MCUs it will be necessary to configure the
- * XIN/XOUT pins to their peripheral function.  Whether that is
- * necessary for any 4xx family device is not known.
+/** Call this to initially configure the UCS peripheral.
  *
  * @return pdTrue if the oscillator has stabilized within the
  * default wait time, and pdFalse if not. */
-unsigned char ucBSP430fllplusConfigure( const xUCSDefn * pxConfig );
 
-#endif
+unsigned long ulBSP430ucsConfigure ( unsigned long ulFrequency_Hz,
+									 short sRSEL );
 
 #endif /* _BSP430_UCS_H_ */

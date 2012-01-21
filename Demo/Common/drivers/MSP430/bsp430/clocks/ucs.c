@@ -33,27 +33,77 @@ POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "clocks/ucs.h"
+#include <stdint.h>
 
-#if 0
-unsigned char ucBSP430fllplusConfigure( const xFLLPLUSDefn * pxConfig )
+unsigned long ulBSP430ucsConfigure ( unsigned long ulFrequency_Hz,
+									 short sRSEL )
 {
-	unsigned char ucReturnValue;
-	unsigned portBASE_TYPE uxStableLoopsLeft = 100;
+	static const unsigned long pulRSELCutoffs [] = {
+#if defined(__MSP430F5438__) || defined(__MSP430F5438A__)
+		400000UL, 				/* RSEL0 */
+		800000UL, 				/* RSEL1 */
+		2000000UL,				/* RSEL2 */
+		4000000UL,				/* RSEL3 */
+		8000000UL,				/* RSEL4 */
+		16000000UL,				/* RSEL5 */
+#else
+#endif
+		UINT32_MAX
+	};
+	unsigned portBASE_TYPE ctl1;
+	unsigned portBASE_TYPE ctl2;
+	unsigned portBASE_TYPE ctl3;
 	
+	if( 0 > sRSEL )
+	{
+		sRSEL = 0;
+		while( pulRSELCutoffs[ sRSEL ] < ulFrequency_Hz )
+		{
+			++sRSEL;
+		}
+	}
+
 	portENTER_CRITICAL();
 
-	FLL_CTL0 = pxConfig->ucFLL_CTL0;
-	FLL_CTL1 = pxConfig->ucFLL_CTL1;
+	/* Low frequency XT1 needed; XT2 off.  Spin at high drive to
+	   stability, then drop back. */
+	UCSCTL6 = XT2OFF | XT1DRIVE_3 | XCAP_0;
 	do {
-		IFG1 &= ~OFIFG;
-		__delay_cycles(20000);
-		--uxStableLoopsLeft;
-	} while ((IFG1 & OFIFG) && (0 < uxStableLoopsLeft));
-	ucReturnValue = !(IFG1 & OFIFG);
-	SCFI0 = pxConfig->ucSCFI0;
-	SCFQCTL = pxConfig->ucSCFQCTL;
+		UCSCTL7 &= ~XT1LFOFFG;
+	} while (UCSCTL7 & XT1LFOFFG);
+	UCSCTL6 &= ~XT1DRIVE_3;
 
+	/* All supported frequencies can be efficiently achieved using
+	 * FFLD set to /2 (>> 1) and FLLREFDIV set to /1 (>> 0).
+	 * FLLREFCLK will always be XT1CLK.  FLLN is calculated from
+	 * ulFrequency_Hz. */
+	ctl1 = sRSEL * DCORSEL0;
+	ctl2 = FLLD_1 | ((((ulFrequency_Hz << 1) / (32768 >> 0)) >> 1) - 1);
+
+	TA0CCTL1 = 0;
+
+	__bis_status_register(SCG0);
+	UCSCTL0 = 0;
+	UCSCTL1 = ctl1;
+	UCSCTL2 = ctl2;
+	UCSCTL3 = SELREF__XT1CLK | FLLREFDIV_0;
+	__bic_status_register(SCG0);
+	TA0CCR1 = TA0R + 31 * 32;
+
+	UCSCTL4 = SELA__XT1CLK | SELS__DCOCLKDIV | SELM__DCOCLKDIV;
+
+	while(! ( TA0CCTL1 & CCIFG ) )
+	{
+		/* nop */
+	}
+	/* Spin until DCO stabilized */
+	do {
+		UCSCTL7 &= ~(XT2OFFG + XT1LFOFFG + XT1HFOFFG + DCOFFG);
+		SFRIFG1 &= ~OFIFG;
+	} while (UCSCTL7 & DCOFFG);
+
+	/* Turn off FLL */
+	__bis_status_register(SCG0);
+	
 	portEXIT_CRITICAL();
-	return ucReturnValue;
 }
-#endif
