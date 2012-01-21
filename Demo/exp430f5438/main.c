@@ -36,6 +36,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "task.h"
 #include "clocks/ucs.h"
 #include <stdio.h>
+#include <string.h>
 
 #define mainLED_TASK_PRIORITY ( tskIDLE_PRIORITY + 1 )
 #define mainSHOWDCO_TASK_PRIORITY ( tskIDLE_PRIORITY + 1 )
@@ -46,8 +47,10 @@ static void showDCO ()
 {
 	unsigned portBASE_TYPE ctl0a;
 	unsigned portBASE_TYPE ctl0b;
+	unsigned long freq_Hz;
 		
 	portENTER_CRITICAL();
+	freq_Hz = ulBSP430ucsTrimFLL( configCPU_CLOCK_HZ, configCPU_CLOCK_HZ / 128 );
 	ctl0a = UCSCTL0;
 	do {
 		ctl0b = UCSCTL0;
@@ -58,7 +61,7 @@ static void showDCO ()
 	} while (ctl0a != ctl0b);
 	portEXIT_CRITICAL();
 
-	printf( "UCS: SR 0x%02x RSEL %u DCO %u MOD %u\n", __read_status_register(), 0x07 & (UCSCTL1 >> 4), 0x1f & (ctl0a >> 8), 0x1f & (ctl0a >> 3));
+	printf("UCS: SR 0x%02x RSEL %u DCO %u MOD %u ; freq %lu\n", __read_status_register(), 0x07 & (UCSCTL1 >> 4), 0x1f & (ctl0a >> 8), 0x1f & (ctl0a >> 3), freq_Hz);
 }
 
 static portTASK_FUNCTION( vShowDCO, pvParameters )
@@ -75,19 +78,20 @@ static portTASK_FUNCTION( vShowDCO, pvParameters )
 	}
 }
 
-
 void main( void )
 {
 	unsigned portBASE_TYPE uxCounter;
+	int i;
 	
 	prvSetupHardware();
 	vParTestInitialise();
 
-	showDCO();
 	printf("Up and running\n");
+	showDCO();
+	
 	vStartLEDFlashTasks( mainLED_TASK_PRIORITY );
 
-	xTaskCreate( vShowDCO, ( signed char * ) "SDCO", 128, NULL, mainSHOWDCO_TASK_PRIORITY, ( xTaskHandle * ) NULL );
+	xTaskCreate( vShowDCO, ( signed char * ) "SDCO", 300, NULL, mainSHOWDCO_TASK_PRIORITY, ( xTaskHandle * ) NULL );
 
 	/* Start the scheduler. */
 	vTaskStartScheduler();
@@ -107,9 +111,6 @@ static void prvSetupHardware( void )
 	 * points */
 	P11SEL |= BIT0 | BIT1 | BIT2;
 	P11DIR |= BIT0 | BIT1 | BIT2;
-
-	TA0CTL = TASSEL__ACLK | MC__CONTINOUS;
-	TB0CTL = TASSEL__SMCLK | MC__STOP;
 
 	ulBSP430ucsConfigure( configCPU_CLOCK_HZ, -1 );
 

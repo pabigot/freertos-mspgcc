@@ -51,4 +51,6 @@ POSSIBILITY OF SUCH DAMAGE.
 unsigned long ulBSP430ucsConfigure ( unsigned long ulFrequency_Hz,
 									 short sRSEL );
 
+unsigned long ulBSP430ucsTrimFLL ();
+
 #endif /* _BSP430_UCS_H_ */

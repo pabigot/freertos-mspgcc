@@ -41,7 +41,7 @@ P1.1 -- XOUT (32 kiHz crystal, don't care: enabled via XIN)
 T0A5
 ----
 
-Tied to ACLK, continuous.
+Tied to ACLK, up (NOT continuous).
 
  CCR0 : Compare mode, interrupt at 1 kHz for context switching
  CCR1
@@ -50,7 +50,8 @@ Tied to ACLK, continuous.
 T0B7
 ----
 
-Tied to SMCLK, disabled when not being actively used.
+Reserved for use within critical sections, by both infrastructure and
+application.  Should be turned off when not in use.
 
  CCR0-CCR5 : Unassigned
  CCR6 : Capture CCI6B (ACLK) for FLL trimming

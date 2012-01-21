@@ -35,6 +35,84 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "clocks/ucs.h"
 #include <stdint.h>
 
+/* Standard procedure on most UCS implementations is to leave the FLL
+ * disabled, and enable it periodically to adapt to changed
+ * conditions.  */
+
+#ifndef portUCS_TRIM_TOLERANCE_DIVISOR
+#define portUCS_TRIM_TOLERANCE_DIVISOR 128
+#endif /* portUCS_TRIM_TOLERANCE_DIVISOR */
+
+static unsigned long ulFrequency_Hz_;
+
+unsigned long ulBSP430ucsTrimFLL ()
+{
+	short taps_left = 32;
+	unsigned short last_ctl0;
+	unsigned short cd;
+	unsigned short usFrequency_aclk = (ulFrequency_Hz_ / 32768);
+	unsigned short usTolerance_aclk = (usFrequency_aclk / portUCS_TRIM_TOLERANCE_DIVISOR);
+
+	if (0 == usTolerance_aclk) {
+		++usTolerance_aclk;
+	}
+	last_ctl0 = ~0;
+	while( 0 < taps_left--) {
+		unsigned short c0;
+		unsigned short c1;
+		short sError_aclk;
+
+		vBSP430ledSet(0, 1);
+		/* Capture the SMCLK ticks between adjacent ACLK ticks */
+		TB0CTL = TASSEL__SMCLK | MC__CONTINOUS | TBCLR;
+		TB0CCTL6 = CM_2 | CCIS_1 | CAP | SCS;
+		/* NOTE: CCIFG seems to be set immediately on the second and
+		 * subsequent iterations.  Flush the first capture. */
+        while (! (TB0CCTL6 & CCIFG)) {
+          ; /* nop */
+        }
+        TB0CCTL6 &= ~CCIFG;
+        while (! (TB0CCTL6 & CCIFG)) {
+          ; /* nop */
+        }
+        c0 = TB0CCR6;
+        TB0CCTL6 &= ~CCIFG;
+        while (! (TB0CCTL6 & CCIFG)) {
+          ; /* nop */
+        }
+        c1 = TB0CCR6;
+		TB0CTL = 0;
+		TB0CCTL6 = 0;
+		cd = (c0 > c1) ? (c0 - c1) : (c1 - c0);
+#if 0
+		printf("c0=%u c1=%u cd=%u DCO=%u RSEL=%u\n", c0, c1, cd, (UCSCTL0 >> 8) & 0x1F, (UCSCTL0 >> 3) & 0x1F);
+#endif
+		sError_aclk = ( usFrequency_aclk > cd ) ? ( usFrequency_aclk - cd ) : ( cd - usFrequency_aclk );
+		vBSP430ledSet(0, 0);
+		if( ( sError_aclk <= usTolerance_aclk )
+			|| ( UCSCTL0 == last_ctl0 ) ) {
+			break;
+		}
+		/* Save current DCO/MOD values, then let FLL run for 32 REFCLK
+		 * ticks (potentially trying each modulation within one
+		 * tap) */
+		vBSP430ledSet(1, 1);
+		last_ctl0 = UCSCTL0;
+		TB0CTL = TASSEL__ACLK | MC__CONTINOUS | TBCLR;
+		__bic_status_register(SCG0);
+		TB0CCTL0 = 0;
+		TB0CCR0 = TB0R + 32;
+		while( ! (TB0CCTL0 & CCIFG ) ) {
+			/* nop */
+		}
+		__bis_status_register(SCG0);
+		vBSP430ledSet(1, 0);
+		TB0CTL = 0;
+		TB0CCTL0 = 0;
+	}
+	return (cd * 32768UL);
+}
+
 unsigned long ulBSP430ucsConfigure ( unsigned long ulFrequency_Hz,
 									 short sRSEL )
 {
@@ -53,6 +131,7 @@ unsigned long ulBSP430ucsConfigure ( unsigned long ulFrequency_Hz,
 	unsigned portBASE_TYPE ctl1;
 	unsigned portBASE_TYPE ctl2;
 	unsigned portBASE_TYPE ctl3;
+	unsigned long ulReturn;
 	
 	if( 0 > sRSEL )
 	{
@@ -80,32 +159,27 @@ unsigned long ulBSP430ucsConfigure ( unsigned long ulFrequency_Hz,
 	ctl1 = sRSEL * DCORSEL0;
 	ctl2 = FLLD_1 | ((((ulFrequency_Hz << 1) / (32768 >> 0)) >> 1) - 1);
 
-	TA0CCTL1 = 0;
-
 	__bis_status_register(SCG0);
 	UCSCTL0 = 0;
 	UCSCTL1 = ctl1;
 	UCSCTL2 = ctl2;
 	UCSCTL3 = SELREF__XT1CLK | FLLREFDIV_0;
-	__bic_status_register(SCG0);
-	TA0CCR1 = TA0R + 31 * 32;
-
 	UCSCTL4 = SELA__XT1CLK | SELS__DCOCLKDIV | SELM__DCOCLKDIV;
 
-	while(! ( TA0CCTL1 & CCIFG ) )
-	{
-		/* nop */
-	}
+	ulFrequency_Hz_ = ulFrequency_Hz;
+	ulReturn = ulBSP430ucsTrimFLL();
+
 	/* Spin until DCO stabilized */
 	do {
 		UCSCTL7 &= ~(XT2OFFG + XT1LFOFFG + XT1HFOFFG + DCOFFG);
 		SFRIFG1 &= ~OFIFG;
 	} while (UCSCTL7 & DCOFFG);
 
-#if portDISABLE_FLL
-	/* Turn off FLL */
-	__bis_status_register(SCG0);
+#if ! defined(portDISABLE_FLL)
+	/* Turn FLL back on */
+	__bic_status_register(SCG0);
 #endif
-	
 	portEXIT_CRITICAL();
+
+	return ulReturn;
 }
