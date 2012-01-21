@@ -1,0 +1,113 @@
+MSP430F5438A
+
+256 kiB FLASH
+16 kiB RAM
+
+
+MPY32
+-----
+
+As needed by application.
+
+
+PORT1
+-----
+
+P1.0 : Digital out (Red LED)
+P1.1 : Digital out (Orange LED
+
+
+PORT3
+-----
+
+P3.4 : UCA0TXD
+P3.5 : UCA0RXD
+
+
+PORT5
+-----
+
+P5.6 : UCA1TXD
+P5.7 : UCA1RXD
+
+
+PORT7
+-----
+
+P1.0 -- XIN (32 kiHz crystal)
+P1.1 -- XOUT (32 kiHz crystal, don't care: enabled via XIN)
+
+
+T0A5
+----
+
+Tied to ACLK, continuous.
+
+ CCR0 : Compare mode, interrupt at 1 kHz for context switching
+ CCR1
+ CCR2-CCR4 : Unassigned
+
+T0B7
+----
+
+Tied to SMCLK, disabled when not being actively used.
+
+ CCR0-CCR5 : Unassigned
+ CCR6 : Capture CCI6B (ACLK) for FLL trimming
+
+UCS
+---
+
+DCO referenced to XT1CLK
+ACLK referenced to XT1CLK
+SMCLK referenced to DCOCLKDIV
+MCLK referenced to DCOCLKDIV
+
+Due to errata UCS7 and UCS10, the FLL is normally disabled.
+
+
+USCI_A0
+-------
+
+HDLC interface, 115200 8N1 or faster
+
+
+USCI_A1
+-------
+
+Standard console, 115200 8N1
+
+
+ADC12
+CRC
+DMAX
+FLASH
+PORT2
+PORTA
+PORT4
+PORTB
+PORT6
+PORTC
+PORT8
+PORTD
+PORT9
+PORT10
+PORTE
+PORT11
+PORTF
+PORTJ
+PMM
+RC
+REF
+RTC
+SFR
+SYS
+T1A3
+USCI_B0
+USCI_B1
+USCI_A2
+USCI_B2
+USCI_A3
+USCI_B3
+WDT
+TLV
