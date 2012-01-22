@@ -77,7 +77,8 @@
 #define configUSE_IDLE_HOOK			1
 #define configUSE_TICK_HOOK			0
 //#define configCPU_CLOCK_HZ			1000000UL
-#define configCPU_CLOCK_HZ			8000000UL
+#define configCPU_CLOCK_HZ				7340032UL /* 3*3 * 5*5 * 32768UL */
+//#define configCPU_CLOCK_HZ			8000000UL
 //#define configCPU_CLOCK_HZ			16000000UL
 //#define configCPU_CLOCK_HZ			20000000UL
 #define configTICK_RATE_HZ			( ( portTickType ) 1000 )
