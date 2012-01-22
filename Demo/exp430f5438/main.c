@@ -35,11 +35,13 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "FreeRTOS.h"
 #include "task.h"
 #include "clocks/ucs.h"
+#include "queue.h"
 #include <stdio.h>
 #include <string.h>
 
 #define mainLED_TASK_PRIORITY ( tskIDLE_PRIORITY + 1 )
 #define mainSHOWDCO_TASK_PRIORITY ( tskIDLE_PRIORITY + 1 )
+#define mainSERIAL_TASK_PRIORITY ( tskIDLE_PRIORITY + 2 )
 
 static void prvSetupHardware( void );
 
@@ -49,7 +51,7 @@ static void showDCO ()
 	unsigned portBASE_TYPE ctl0b;
 	unsigned long freq_Hz;
 		
-	portENTER_CRITICAL();
+	portDISABLE_INTERRUPTS();
 	freq_Hz = ulBSP430ucsTrimFLL( configCPU_CLOCK_HZ, configCPU_CLOCK_HZ / 128 );
 	ctl0a = UCSCTL0;
 	do {
@@ -59,7 +61,7 @@ static void showDCO ()
 		}
 		ctl0a = UCSCTL0;
 	} while (ctl0a != ctl0b);
-	portEXIT_CRITICAL();
+	portENABLE_INTERRUPTS();
 
 	printf("UCS: SR 0x%02x RSEL %u DCO %u MOD %u ; freq %lu\n", __read_status_register(), 0x07 & (UCSCTL1 >> 4), 0x1f & (ctl0a >> 8), 0x1f & (ctl0a >> 3), freq_Hz);
 }
@@ -78,6 +80,80 @@ static portTASK_FUNCTION( vShowDCO, pvParameters )
 	}
 }
 
+static xQueueHandle xRxedChars; 
+volatile uint16_t nrx;
+
+static void
+uart_config (unsigned long ulBAUD)
+{
+	uint16_t brw = (configCPU_CLOCK_HZ / ulBAUD);
+	uint16_t m = (1 + 16 * (configCPU_CLOCK_HZ - ulBAUD * brw) / ulBAUD) / 2;
+
+	printf("UCA0 brw %u m %u\n", brw, m);
+	portDISABLE_INTERRUPTS();
+
+	xRxedChars = xQueueCreate(16, sizeof(uint8_t));
+
+	/* Hold the UART in reset during configuration */
+	UCA0CTL1 |= UCSWRST;
+
+	UCA0CTLW0 = UCSWRST | UCSSEL__SMCLK;
+	UCA0BRW = brw;
+	UCA0MCTL = (m * UCBRF0);
+
+	P3SEL |= BIT4 | BIT5;
+	nrx = 0;
+	/* Release the UART */
+	UCA0CTL1 &= ~UCSWRST;
+	UCA0IE |= UCRXIE;
+
+	portENABLE_INTERRUPTS();
+}
+
+volatile unsigned int nhp;
+
+static void
+__attribute__((__interrupt__(USCI_A0_VECTOR)))
+usci_a0_isr ()
+{
+	switch (UCA0IV) {
+	default:
+	case USCI_NONE:
+	case USCI_UCTXIFG:
+		break;
+	case USCI_UCRXIFG: {
+		portBASE_TYPE xHigherPriorityTaskWoken;
+		uint8_t c = UCA0RXBUF;
+
+		xQueueSendFromISR(xRxedChars, &c, &xHigherPriorityTaskWoken);
+		if (xHigherPriorityTaskWoken) {
+			++nhp;
+			taskYIELD();
+		}
+		break;
+	}
+	}
+}
+
+static portTASK_FUNCTION( vSerialStuff, pvParameters )
+{
+	portTickType xWakeTime;
+
+	( void ) pvParameters;
+	xWakeTime = xTaskGetTickCount();
+	uart_config(115200);
+	for(;;)
+	{
+		uint8_t c;
+
+		if (xQueueReceive(xRxedChars, &c, 1200)) {
+			printf("Got %d '%c', nhp %u\n", c, c, nhp);
+		} else {
+			printf("Serial woke without rx\n");
+		}
+	}
+}
+
 void main( void )
 {
 	unsigned portBASE_TYPE uxCounter;
@@ -92,6 +168,7 @@ void main( void )
 	vStartLEDFlashTasks( mainLED_TASK_PRIORITY );
 
 	xTaskCreate( vShowDCO, ( signed char * ) "SDCO", 300, NULL, mainSHOWDCO_TASK_PRIORITY, ( xTaskHandle * ) NULL );
+	xTaskCreate( vSerialStuff, ( signed char * ) "Serial", 300, NULL, mainSERIAL_TASK_PRIORITY, ( xTaskHandle * ) NULL );
 
 	/* Start the scheduler. */
 	vTaskStartScheduler();
