@@ -35,34 +35,42 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "clocks/ucs.h"
 #include <stdint.h>
 
-/* Standard procedure on most UCS implementations is to leave the FLL
- * disabled, and enable it periodically to adapt to changed
- * conditions.  */
+/* Frequency measurement occurs over this duration when determining
+ * whether trim is required.  The number of SMCLK ticks in an ACLK
+ * period is the target frequency divided by 32768; accumulating over
+ * multiple ACLK periods decreases the measurement error.  At a target
+ * frequency of 2^25 (32 MiHz) the tick count for a single period
+ * might require 11 bits to represent, so do not exceed 32 lest the
+ * 16-bit delta value overflow.  Select a value so that the number of
+ * ticks within the sample period is some small (~3) multiple of
+ * TRIM_TOLERANCE_DIVISOR. */
+#define TRIM_SAMPLE_PERIOD_ACLK 8
 
-#ifndef portUCS_TRIM_TOLERANCE_DIVISOR
-#define portUCS_TRIM_TOLERANCE_DIVISOR 128
-#endif /* portUCS_TRIM_TOLERANCE_DIVISOR */
+/* Tolerance for SMCLK ticks within a trim sample period.  The target
+ * frequency count is divided by this number; if the measured
+ * frequency count is not within that distance of the target, the FLL
+ * is enabled for a short duration.  512 is about 0.2% */
+#define TRIM_TOLERANCE_DIVISOR 512
 
-static unsigned long ulFrequency_Hz_;
+/* The target frequency expressed as the number of SMCLK ticks
+ * expected within a trim sample period. */
+static uint16_t targetFrequency_tsp_;
 
 unsigned long ulBSP430ucsTrimFLL ()
 {
 	short taps_left = 32;
 	unsigned short last_ctl0;
-	unsigned short cd;
-	unsigned short usFrequency_aclk = (ulFrequency_Hz_ / 32768);
-	unsigned short usTolerance_aclk = (usFrequency_aclk / portUCS_TRIM_TOLERANCE_DIVISOR);
+	uint16_t tolerance_tsp;
+	uint16_t current_frequency_tsp;
 
-	if (0 == usTolerance_aclk) {
-		++usTolerance_aclk;
-	}
 	last_ctl0 = ~0;
+	tolerance_tsp = targetFrequency_tsp_ / TRIM_TOLERANCE_DIVISOR;
 	while( 0 < taps_left--) {
-		unsigned short c0;
-		unsigned short c1;
-		short sError_aclk;
+		int i;
+		unsigned int c0;
+		unsigned int c1;
+		uint16_t abs_freq_err_tsp;
 
-		vBSP430ledSet(0, 1);
 		/* Capture the SMCLK ticks between adjacent ACLK ticks */
 		TB0CTL = TASSEL__SMCLK | MC__CONTINOUS | TBCLR;
 		TB0CCTL6 = CM_2 | CCIS_1 | CAP | SCS;
@@ -71,32 +79,44 @@ unsigned long ulBSP430ucsTrimFLL ()
         while (! (TB0CCTL6 & CCIFG)) {
           ; /* nop */
         }
-        TB0CCTL6 &= ~CCIFG;
-        while (! (TB0CCTL6 & CCIFG)) {
-          ; /* nop */
-        }
-        c0 = TB0CCR6;
-        TB0CCTL6 &= ~CCIFG;
-        while (! (TB0CCTL6 & CCIFG)) {
-          ; /* nop */
-        }
+		for (i = 0; i <= TRIM_SAMPLE_PERIOD_ACLK; ++i) {
+			TB0CCTL6 &= ~CCIFG;
+			while (! (TB0CCTL6 & CCIFG)) {
+				; /* nop */
+			}
+			if (0 == i) {
+				c0 = TB0CCR6;
+			}
+		}
         c1 = TB0CCR6;
 		TB0CTL = 0;
 		TB0CCTL6 = 0;
-		cd = (c0 > c1) ? (c0 - c1) : (c1 - c0);
+		current_frequency_tsp = (c0 > c1) ? (c0 - c1) : (c1 - c0);
+		if (current_frequency_tsp > targetFrequency_tsp_) {
+			abs_freq_err_tsp = current_frequency_tsp - targetFrequency_tsp_;
+		} else {
+			abs_freq_err_tsp = targetFrequency_tsp_ - current_frequency_tsp;
+		}
 #if 0
-		printf("c0=%u c1=%u cd=%u DCO=%u RSEL=%u\n", c0, c1, cd, (UCSCTL0 >> 8) & 0x1F, (UCSCTL0 >> 3) & 0x1F);
+		printf("RSEL %u DCO %u MOD %u current %u target %u tol %u err %u ; ctl0 %04x last %04x\n",
+			   (UCSCTL1 >> 4) & 0x07, (UCSCTL0 >> 8) & 0x1F, (UCSCTL0 >> 3) & 0x1F,
+			   current_frequency_tsp, targetFrequency_tsp_, tolerance_tsp, abs_freq_err_tsp,
+			   UCSCTL0, last_ctl0);
 #endif
-		sError_aclk = ( usFrequency_aclk > cd ) ? ( usFrequency_aclk - cd ) : ( cd - usFrequency_aclk );
-		vBSP430ledSet(0, 0);
-		if( ( sError_aclk <= usTolerance_aclk )
+		if ((abs_freq_err_tsp <= tolerance_tsp)
 			|| ( UCSCTL0 == last_ctl0 ) ) {
+#if 0
+			printf("terminate tap %u error %u ctl0 %04x was %04x\n",
+				   taps_left, abs_freq_err_tsp, UCSCTL0, last_ctl0);
+#endif
 			break;
 		}
+#if 0
+		printf("running fll, error %u\n", abs_freq_err_tsp);
+#endif
 		/* Save current DCO/MOD values, then let FLL run for 32 REFCLK
 		 * ticks (potentially trying each modulation within one
 		 * tap) */
-		vBSP430ledSet(1, 1);
 		last_ctl0 = UCSCTL0;
 		TB0CTL = TASSEL__ACLK | MC__CONTINOUS | TBCLR;
 		__bic_status_register(SCG0);
@@ -106,11 +126,17 @@ unsigned long ulBSP430ucsTrimFLL ()
 			/* nop */
 		}
 		__bis_status_register(SCG0);
-		vBSP430ledSet(1, 0);
+		/* Delay another 1..2 ACLK cycles for the integrator to fully
+		 * update. */
+		TB0CCTL0 &= ~CCIFG;
+		TB0CCR0 = TB0R + 2;
+		while( ! (TB0CCTL0 & CCIFG ) ) {
+			/* nop */
+		}
 		TB0CTL = 0;
 		TB0CCTL0 = 0;
 	}
-	return (cd * 32768UL);
+	return current_frequency_tsp * (32768UL / TRIM_SAMPLE_PERIOD_ACLK);
 }
 
 unsigned long ulBSP430ucsConfigure ( unsigned long ulFrequency_Hz,
@@ -124,6 +150,7 @@ unsigned long ulBSP430ucsConfigure ( unsigned long ulFrequency_Hz,
 		4000000UL,				/* RSEL3 */
 		8000000UL,				/* RSEL4 */
 		16000000UL,				/* RSEL5 */
+		20000000UL,				/* RSEL6 */
 #else
 #endif
 		UINT32_MAX
@@ -133,6 +160,8 @@ unsigned long ulBSP430ucsConfigure ( unsigned long ulFrequency_Hz,
 	unsigned portBASE_TYPE ctl3;
 	unsigned long ulReturn;
 	
+	/* If not told what RSEL to use, pick the one appropriate for the
+	 * target frequency. */
 	if( 0 > sRSEL )
 	{
 		sRSEL = 0;
@@ -166,7 +195,7 @@ unsigned long ulBSP430ucsConfigure ( unsigned long ulFrequency_Hz,
 	UCSCTL3 = SELREF__XT1CLK | FLLREFDIV_0;
 	UCSCTL4 = SELA__XT1CLK | SELS__DCOCLKDIV | SELM__DCOCLKDIV;
 
-	ulFrequency_Hz_ = ulFrequency_Hz;
+	targetFrequency_tsp_ = ulFrequency_Hz / (32768 / TRIM_SAMPLE_PERIOD_ACLK);
 	ulReturn = ulBSP430ucsTrimFLL();
 
 	/* Spin until DCO stabilized */
