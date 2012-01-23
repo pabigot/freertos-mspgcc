@@ -318,7 +318,7 @@ static void prvSetupTimerInterrupt( void )
 	/* Enable the interrupts. */
 	TACCTL0 = CCIE;
 	/* Count up using ACLK clearing the initial counter. */
-	TACTL = TASSEL_1 | MC_1 | TACLR;
+	TACTL = TASSEL_1 | MC_2 | TACLR;
 }
 /*-----------------------------------------------------------*/
 
@@ -340,6 +340,9 @@ static void prvSetupTimerInterrupt( void )
 		/* Save the context of the interrupted task. */
 		portSAVE_CONTEXT();
 
+		/* Wake again for the next tick */
+		TACCR0 += portACLK_FREQUENCY_HZ / configTICK_RATE_HZ;
+		
 		/* Increment the tick count then switch to the highest priority task
 		that is ready to run. */
 		vTaskIncrementTick();
@@ -359,6 +362,9 @@ static void prvSetupTimerInterrupt( void )
 	__attribute__( ( __interrupt__( TIMERA0_VECTOR ) ) )
 	static void prvTickISR( void )
 	{
+		/* Wake again for the next tick */
+		TACCR0 += portACLK_FREQUENCY_HZ / configTICK_RATE_HZ;
+		
 		vTaskIncrementTick();
 	}
 #endif
