@@ -147,7 +147,10 @@ static portTASK_FUNCTION( vSerialStuff, pvParameters )
 		uint8_t c;
 
 		if (xQueueReceive(xRxedChars, &c, 1200)) {
-			printf("Got %d '%c', nhp %u\n", c, c, nhp);
+			do {
+				putchar(c);
+				// printf("Got %d '%c', nhp %u\n", c, c, nhp);
+			} while (xQueueReceive(xRxedChars, &c, 0));
 		} else {
 			printf("Serial woke without rx\n");
 		}
