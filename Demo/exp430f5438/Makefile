@@ -44,10 +44,13 @@ AR=$(CROSS_COMPILE)ar
 
 OPT_CFLAGS ?= -Os
 
+WARN_CFLAGS = -Wall
+
 CPPFLAGS = -I. -I$(BSP430_PATH) -I$(PORT_PATH)
 CPPFLAGS += -I$(SOURCE_PATH)/include
 CPPFLAGS += -I$(FREERTOS_ROOT)/Demo/Common/include
-CFLAGS = -mmcu=$(MCU) $(OPT_CFLAGS) -ggdb
+
+CFLAGS = -mmcu=$(MCU) $(OPT_CFLAGS) -ggdb $(WARN_CFLAGS)
 
 SRC = \
 $(SOURCE_PATH)/tasks.c \
@@ -62,6 +65,7 @@ $(BSP430_PATH)/ParTest.c \
 main.c
 
 OBJ = $(SRC:.c=.o)
+DEP = $(SRC:.c=.d)
 
 demo.elf: $(OBJ)
 	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(OBJ)
@@ -74,3 +78,11 @@ realclean: clean
 
 install: demo.elf
 	mspdebug -j uif 'prog demo.elf'
+
+%.d: %.c
+	@set -e; rm -f $@; \
+	 $(CC) -MM $(CPPFLAGS) $< > $@.$$$$; \
+	 sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+	 rm -f $@.$$$$
+
+include $(DEP)

@@ -2,3 +2,5 @@
 *.[oa]
 # Ignore elf binaries
 *.elf
+# Ignore dependency files
+*.d
