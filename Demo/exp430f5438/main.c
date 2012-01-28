@@ -34,6 +34,8 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "FreeRTOS.h"
 #include "task.h"
+#include "partest.h"
+#include "flash.h"
 #include "clocks/ucs.h"
 #include "timers/timerA0.h"
 #include "queue.h"
@@ -51,7 +53,6 @@ static void showDCO ()
 	unsigned portBASE_TYPE ctl0a;
 	unsigned portBASE_TYPE ctl0b;
 	unsigned long freq_Hz;
-	extern unsigned long prvRollovers;
 		
 	portDISABLE_INTERRUPTS();
 	freq_Hz = ulBSP430ucsTrimFLL( configCPU_CLOCK_HZ, configCPU_CLOCK_HZ / 128 );
@@ -146,10 +147,7 @@ usci_a0_isr ()
 
 static portTASK_FUNCTION( vSerialStuff, pvParameters )
 {
-	portTickType xWakeTime;
-
 	( void ) pvParameters;
-	xWakeTime = xTaskGetTickCount();
 	uart_config(115200);
 	for(;;)
 	{
@@ -166,11 +164,8 @@ static portTASK_FUNCTION( vSerialStuff, pvParameters )
 	}
 }
 
-void main( void )
+int main( void )
 {
-	unsigned portBASE_TYPE uxCounter;
-	int i;
-	
 	prvSetupHardware();
 	vParTestInitialise();
 
