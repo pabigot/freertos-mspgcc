@@ -41,11 +41,14 @@ P1.1 -- XOUT (32 kiHz crystal, don't care: enabled via XIN)
 T0A5
 ----
 
-Tied to ACLK, up (NOT continuous).
+Tied to ACLK, continuous mode.  Clock enabled on power-up when crystal
+stabilized, and runs continuously.
 
  CCR0 : Compare mode, interrupt at 1 kHz for context switching
  CCR1
  CCR2-CCR4 : Unassigned
+ IFG : Overflow counter for uptime clock
+
 
 T0B7
 ----
@@ -61,11 +64,10 @@ UCS
 
 DCO referenced to XT1CLK
 ACLK referenced to XT1CLK
-SMCLK referenced to DCOCLKDIV
+SMCLK referenced to DCOCLKDIV, undivided
 MCLK referenced to DCOCLKDIV
 
 Due to errata UCS7 and UCS10, the FLL is normally disabled.
-
 
 USCI_A0
 -------

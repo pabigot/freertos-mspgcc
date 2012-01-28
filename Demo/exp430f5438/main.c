@@ -35,6 +35,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "FreeRTOS.h"
 #include "task.h"
 #include "clocks/ucs.h"
+#include "timers/timerA0.h"
 #include "queue.h"
 #include <stdio.h>
 #include <string.h>
@@ -50,6 +51,7 @@ static void showDCO ()
 	unsigned portBASE_TYPE ctl0a;
 	unsigned portBASE_TYPE ctl0b;
 	unsigned long freq_Hz;
+	extern unsigned long prvRollovers;
 		
 	portDISABLE_INTERRUPTS();
 	freq_Hz = ulBSP430ucsTrimFLL( configCPU_CLOCK_HZ, configCPU_CLOCK_HZ / 128 );
@@ -69,14 +71,21 @@ static void showDCO ()
 static portTASK_FUNCTION( vShowDCO, pvParameters )
 {
 	portTickType xLastWakeTime;
+	unsigned long last_ticks;
 
 	( void ) pvParameters;
 	xLastWakeTime = xTaskGetTickCount();
+	last_ticks = ulBSP430timerA0Ticks();
 
 	for(;;)
 	{
+		unsigned long ticks;
+		
 		vTaskDelayUntil( &xLastWakeTime, 1000 );
+		ticks = ulBSP430timerA0Ticks();
 		showDCO();
+		printf("%lu ticks since last wake, uptime %lu seconds\n", (ticks - last_ticks), ticks / 32768);
+		last_ticks = ticks;
 	}
 }
 
@@ -225,5 +234,7 @@ static void prvSetupHardware( void )
 	P11DIR |= BIT0 | BIT1 | BIT2;
 
 	ulBSP430ucsConfigure( configCPU_CLOCK_HZ, -1 );
+	vBSP430timerA0Configure();
+	
 	prvSetupConsole();
 }

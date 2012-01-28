@@ -181,13 +181,6 @@ volatile unsigned short usCriticalNesting = portINITIAL_CRITICAL_NESTING;
 
 /*-----------------------------------------------------------*/
 
-/*
- * Sets up the periodic ISR used for the RTOS tick.  This uses timer 0, but
- * could have alternatively used the watchdog timer or timer 1.
- */
-static void prvSetupTimerInterrupt( void );
-/*-----------------------------------------------------------*/
-
 /* 
  * Initialise the stack of a task to look exactly as if a call to 
  * portSAVE_CONTEXT had been called.
@@ -247,11 +240,48 @@ portSTACK_TYPE *pxPortInitialiseStack( portSTACK_TYPE *pxTopOfStack, pdTASK_CODE
 }
 /*-----------------------------------------------------------*/
 
+/* The TI headers are inconsistent as to whether the first Timer_A is
+   controlled via TACTL or TA0CTL. */
+#if ! defined(TACTL_) && ! defined(TACTL)
+#define TACTL TA0CTL
+#define TAR TA0R
+#define TACCR0 TA0CCR0
+#define TACCTL0 TA0CCTL0
+#endif /* TACTL */
+#ifndef TIMERA0_VECTOR
+#define TIMERA0_VECTOR TIMER0_A0_VECTOR
+#endif /* TIMERA0_VECTOR */
+
+/*-----------------------------------------------------------*/
+
 portBASE_TYPE xPortStartScheduler( void )
 {
-	/* Setup the hardware to generate the tick.  Interrupts are disabled when
-	this function is called. */
-	prvSetupTimerInterrupt();
+	/* Common practice for the MSPGCC port is for the application to
+	   permanently configure the timers after the clocks are
+	   configured.  TA0 is expected to be based on a 32 kHz ACLK
+	   signal, but the timer itself runs regardless of whether the
+	   scheduler is active, allowing time-since-boot to be maintained.
+
+	   In support of legacy configurations, if
+	   configMSP430_APP_CONTROLS_TA0 is not set the timer will be
+	   configured at this point. */
+
+#if ( configMSP430_APP_CONTROLS_TA0 != 1 )
+
+	/* Ensure the timer is stopped before configuring. */
+	TACTL = 0;
+	__delay_cycles(50);
+
+	/* Count continuously using ACLK clearing the initial counter. */
+	TACTL = TASSEL_1 | MC_2 | TACLR;
+
+#endif /* configMSP430_APP_CONTROLS_TA0 */
+
+	/* Set the compare match value according to the tick rate we want. */
+	TACCR0 = TAR + portACLK_FREQUENCY_HZ / configTICK_RATE_HZ;
+
+	/* Enable the interrupts. */
+	TACCTL0 = CCIE;
 
 	/* Restore the context of the first task that is going to run. */
 	portRESTORE_CONTEXT();
@@ -263,8 +293,8 @@ portBASE_TYPE xPortStartScheduler( void )
 
 void vPortEndScheduler( void )
 {
-	/* It is unlikely that the MSP430 port will get stopped.  If required simply
-	disable the tick interrupt here. */
+	/* Disable the timeslice interrupt */
+	TACCTL0 = 0;
 }
 /*-----------------------------------------------------------*/
 
@@ -291,34 +321,6 @@ void vPortYield( void )
 
 	/* Restore the context of the new task. */
 	portRESTORE_CONTEXT();
-}
-/*-----------------------------------------------------------*/
-
-/* The TI headers are inconsistent as to whether the first Timer_A is
-   controlled via TACTL or TA0CTL. */
-#if ! defined(TACTL_) && ! defined(TACTL)
-#define TACTL TA0CTL
-#define TACCR0 TA0CCR0
-#define TACCTL0 TA0CCTL0
-#endif /* TACTL */
-#ifndef TIMERA0_VECTOR
-#define TIMERA0_VECTOR TIMER0_A0_VECTOR
-#endif /* TIMERA0_VECTOR */
-
-/*
- * Hardware initialisation to generate the RTOS tick.  This uses timer 0
- * but could alternatively use the watchdog timer or timer 1. 
- */
-static void prvSetupTimerInterrupt( void )
-{
-	/* Ensure the timer is stopped before configuring. */
-	TACTL = 0;
-	/* Set the compare match value according to the tick rate we want. */
-	TACCR0 = portACLK_FREQUENCY_HZ / configTICK_RATE_HZ;
-	/* Enable the interrupts. */
-	TACCTL0 = CCIE;
-	/* Count up using ACLK clearing the initial counter. */
-	TACTL = TASSEL_1 | MC_2 | TACLR;
 }
 /*-----------------------------------------------------------*/
 

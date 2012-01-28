@@ -77,10 +77,10 @@
 #define configUSE_IDLE_HOOK			1
 #define configUSE_TICK_HOOK			0
 //#define configCPU_CLOCK_HZ			1000000UL
-#define configCPU_CLOCK_HZ				7340032UL /* 3*3 * 5*5 * 32768UL */
+//#define configCPU_CLOCK_HZ				7340032UL /* 3*3 * 5*5 * 32768UL */
 //#define configCPU_CLOCK_HZ			8000000UL
 //#define configCPU_CLOCK_HZ			16000000UL
-//#define configCPU_CLOCK_HZ			20000000UL
+#define configCPU_CLOCK_HZ			20000000UL
 #define configTICK_RATE_HZ			( ( portTickType ) 1000 )
 #define configMAX_PRIORITIES		( ( unsigned portBASE_TYPE ) 4 )
 #define configMINIMAL_STACK_SIZE	( ( unsigned short ) 300 )
@@ -104,5 +104,8 @@ to exclude the API function. */
 #define INCLUDE_vTaskSuspend			0
 #define INCLUDE_vTaskDelayUntil			1
 #define INCLUDE_vTaskDelay				1
+
+/* Customization of MSPGCC port */
+#define configMSP430_APP_CONTROLS_TA0	1
 
 #endif /* FREERTOS_CONFIG_H */
