@@ -36,6 +36,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "task.h"
 #include "partest.h"
 #include "flash.h"
+#include "platform.h"
 #include "clocks/ucs.h"
 #include "timers/timerA0.h"
 #include "queue.h"
@@ -183,53 +184,12 @@ int main( void )
 
 void vApplicationIdleHook( void ) { }
 
-static void prvSetupConsole( void )
-{
-	/* Hold the UART in reset during configuration */
-	UCA1CTL1 |= UCSWRST;
-	UCA1CTLW0 = UCSWRST | UCSSEL__ACLK;
-	UCA1BRW = 3;
-	UCA1MCTL = (0 * UCBRF_1) | (3 * UCBRS_1);
-	P5SEL |= BIT6 | BIT7;
-	UCA1CTL1 &= ~UCSWRST;
-}
-
-int
-putchar (int c)
-{
-  /* Spin until tx buffer ready */
-  while (!(UCA1IFG & UCTXIFG)) {
-    ;
-  }
-  /* Transmit the character */
-  UCA1TXBUF = c;
-
-  return c;
-}
-
-#include "utility/led.h"
-
-const xLEDDefn pxLEDDefn[] = {
-	{ .pucPxOUT = &P1OUT, .ucBIT = BIT0 }, /* Red */
-	{ .pucPxOUT = &P1OUT, .ucBIT = BIT1 }, /* Orange */
-};
-const unsigned char ucLEDDefnCount = sizeof(pxLEDDefn) / sizeof(*pxLEDDefn);
-
 static void prvSetupHardware( void )
 {
-	/* Hold off watchdog */
-	WDTCTL = WDTPW + WDTHOLD;
-
-	/* Enable XT1 functions */
-	P7SEL |= BIT0;
-
+	vBSP430platformSetup();
+	
 	/* P11.0: ACLK ; P11.1: MCLK; P11.2: SMCLK ; all available on test
 	 * points */
 	P11SEL |= BIT0 | BIT1 | BIT2;
 	P11DIR |= BIT0 | BIT1 | BIT2;
-
-	ulBSP430ucsConfigure( configCPU_CLOCK_HZ, -1 );
-	vBSP430timerA0Configure();
-	
-	prvSetupConsole();
 }
