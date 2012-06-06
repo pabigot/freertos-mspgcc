@@ -54,6 +54,8 @@
 #ifndef PORTMACRO_H
 #define PORTMACRO_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -76,6 +78,8 @@ extern "C" {
 #define portSHORT		int
 #define portSTACK_TYPE	unsigned portSHORT
 #define portBASE_TYPE	portSHORT
+/* Beware: this is only valid for data pointers, not function pointers */
+#define portPOINTER_SIZE_TYPE uintptr_t
 
 #if( configUSE_16_BIT_TICKS == 1 )
 	typedef unsigned portSHORT portTickType;

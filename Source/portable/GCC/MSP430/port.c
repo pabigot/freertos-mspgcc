@@ -60,6 +60,7 @@
 /* Standard includes. */
 #include <stdlib.h>
 #include <msp430.h>
+#include <stdint.h>
 
 /* Scheduler includes. */
 #include "FreeRTOS.h"
@@ -74,9 +75,9 @@ not the MCLK. */
 #define portACLK_FREQUENCY_HZ			( ( portTickType ) 32768 )
 #define portINITIAL_CRITICAL_NESTING	( ( unsigned short ) 10 )
 #if portDISABLE_FLL
-#define portTASK_INITIAL_R2	( ( portSTACK_TYPE ) ( GIE | SCG0 ) )
+#define portTASK_INITIAL_R2	( ( portBASE_TYPE ) ( GIE | SCG0 ) )
 #else /* portDISABLE_FLL */
-#define portTASK_INITIAL_R2 ( ( portSTACK_TYPE ) GIE )
+#define portTASK_INITIAL_R2 ( ( portBASE_TYPE ) GIE )
 #endif /* portDISABLE_FLL */
 
 /* We require the address of the pxCurrentTCB variable, but don't want to know
@@ -99,12 +100,27 @@ sequence. */
 volatile unsigned short usCriticalNesting = portINITIAL_CRITICAL_NESTING;
 /*-----------------------------------------------------------*/
 
-#if __MSP430_CPU__ & MSP430_CPU_MSP430X
+#if __MSP430X__ & ( __MSP430_CPUX_TARGET_SR20__ | __MSP430_CPUX_TARGET_ISR20__ )
+/* Save 20-bit registers if somebody seems to be using 20-bit code. */
+
+#define portASM_PUSH_GEN_REGS					\
+	"pushm.a	#12, r15	\n\t"
+#define portASM_PUSH_GEN_REGS_TAIL				\
+	"pushm.a	#11, r14	\n\t"
+#define portASM_POP_GEN_REGS					\
+	"popm.a		#12, r15	\n\t"
+
+#define portSAVED_REGISTER_TYPE uint20_t
+
+#elif __MSP430X__
+/* Save 16-bit registers if nobody seems to be using 20-bit code */
 
 #define portASM_PUSH_GEN_REGS					\
 	"pushm.w	#12, r15	\n\t"
 #define portASM_POP_GEN_REGS					\
-	"popm.w	#12, r15	\n\t"
+	"popm.w		#12, r15	\n\t"
+
+#define portSAVED_REGISTER_TYPE portBASE_TYPE
 
 #else
 
@@ -136,6 +152,38 @@ volatile unsigned short usCriticalNesting = portINITIAL_CRITICAL_NESTING;
 	"pop	r14			\n\t"					\
 	"pop	r15			\n\t"					
 						   
+#define portSAVED_REGISTER_TYPE portBASE_TYPE
+
+#endif
+
+#if __MSP430X__ & __MSP430_CPUX_TARGET_D20__
+
+#define portASM_STORE_CONTEXT					\
+	"movx.w	%0, r14		\n\t"					\
+	"push	r14			\n\t"					\
+	"mova	%1, r12		\n\t"					\
+	"mova	r1, @r12	\n\t"
+
+#define portASM_RECALL_CONTEXT					\
+	"mova	%1, r12		\n\t"					\
+	"mova	@r12, r1	\n\t"					\
+	"pop	r15			\n\t"					\
+	"movx.w	r15, %0		\n\t"
+
+#else
+
+#define portASM_STORE_CONTEXT					\
+	"mov.w	%0, r14		\n\t"					\
+	"push	r14			\n\t"					\
+	"mov.w	%1, r12		\n\t"					\
+	"mov.w	r1, @r12	\n\t"
+
+#define portASM_RECALL_CONTEXT					\
+	"mov.w	%1, r12		\n\t"					\
+	"mov.w	@r12, r1	\n\t"					\
+	"pop	r15			\n\t"					\
+	"mov.w	r15, %0		\n\t"
+
 #endif
 
 /* 
@@ -147,10 +195,15 @@ volatile unsigned short usCriticalNesting = portINITIAL_CRITICAL_NESTING;
  */
 #define portSAVE_CONTEXT()								\
 	__asm__ __volatile__ ( portASM_PUSH_GEN_REGS		\
-						   "mov.w	%0, r14		\n\t"	\
-						   "push	r14			\n\t"	\
-						   "mov.w	%1, r12		\n\t"	\
-						   "mov.w	r1, @r12	\n\t"	\
+						   portASM_STORE_CONTEXT		\
+						   :							\
+						   : "m"( usCriticalNesting ),	\
+							 "m"( pxCurrentTCB )		\
+						   );
+
+#define portSAVE_CONTEXT_TAIL()							\
+	__asm__ __volatile__ ( portASM_PUSH_GEN_REGS_TAIL	\
+						   portASM_STORE_CONTEXT		\
 						   :							\
 						   : "m"( usCriticalNesting ),	\
 							 "m"( pxCurrentTCB )		\
@@ -167,10 +220,7 @@ volatile unsigned short usCriticalNesting = portINITIAL_CRITICAL_NESTING;
  * register that is about to be popped from the stack.
  */
 #define portRESTORE_CONTEXT()							\
-	__asm__ __volatile__ ( "mov.w	%1, r12		\n\t"	\
-						   "mov.w	@r12, r1	\n\t"	\
-						   "pop	r15				\n\t"	\
-						   "mov.w	r15, %0		\n\t"	\
+	__asm__ __volatile__ ( portASM_RECALL_CONTEXT		\
 						   portASM_POP_GEN_REGS			\
 						   "bic	%2, @r1			\n\t"	\
 						   "reti				\n\t"	\
@@ -181,6 +231,14 @@ volatile unsigned short usCriticalNesting = portINITIAL_CRITICAL_NESTING;
 
 /*-----------------------------------------------------------*/
 
+typedef struct xTCB
+{
+	portBASE_TYPE usCriticalNesting;
+	portSAVED_REGISTER_TYPE uxRegisters[12];
+	unsigned short usPChiSR;
+	unsigned short usPClow;
+} __attribute__((__packed__)) xTCB;
+
 /* 
  * Initialise the stack of a task to look exactly as if a call to 
  * portSAVE_CONTEXT had been called.
@@ -189,54 +247,43 @@ volatile unsigned short usCriticalNesting = portINITIAL_CRITICAL_NESTING;
  */
 portSTACK_TYPE *pxPortInitialiseStack( portSTACK_TYPE *pxTopOfStack, pdTASK_CODE pxCode, void *pvParameters )
 {
-	/* The msp430 automatically pushes the PC then SR onto the stack before 
-	executing an ISR.  We want the stack to look just as if this has happened
-	so place a pointer to the start of the task on the stack first - followed
-	by the flags we want the task to use when it starts up. */
-	*pxTopOfStack = ( portSTACK_TYPE ) pxCode;
-	pxTopOfStack--;
-	*pxTopOfStack = portTASK_INITIAL_R2;
-	pxTopOfStack--;
+	unsigned short usRegisterIndex;
+	xTCB *pxTCB = ( xTCB * ) pxTopOfStack;
+	pxTCB--;
+	
+	/* The msp430 automatically pushes the PC then SR onto the stack
+	before executing an ISR.  When the PC is 20 bit, the upper 4 bits
+	are stored in the upper bits of the SR word.  We want the stack to
+	look just as if this has happened so place a pointer to the start
+	of the task on the stack first - followed by the flags we want the
+	task to use when it starts up. */
+#if __MSP430X__ & __MSP430_CPUX_TARGET_C20__
+	pxTCB->usPClow = ( unsigned short ) ( uint20_t ) pxCode;
+	pxTCB->usPChiSR = ( 0xF000 & ( unsigned short) ( ( ( uint20_t ) pxCode ) >> 4 ) );
+	pxTCB->usPChiSR |= portTASK_INITIAL_R2;
+#else
+	pxTCB->usPClow = ( unsigned short ) pxCode;
+	pxTCB->usPChiSR = portTASK_INITIAL_R2;
+#endif
 
 	/* When the task starts is will expect to find the function parameter in
 	R15. */
-	*pxTopOfStack = ( portSTACK_TYPE ) pvParameters;
-	pxTopOfStack--;
+	pxTCB->uxRegisters[11] = ( portSAVED_REGISTER_TYPE ) ( uintptr_t ) pvParameters;
 
-	/* Next the remaining general purpose registers. */
-	*pxTopOfStack = ( portSTACK_TYPE ) 0xeeee;
-	pxTopOfStack--;
-	*pxTopOfStack = ( portSTACK_TYPE ) 0xdddd;
-	pxTopOfStack--;
-	*pxTopOfStack = ( portSTACK_TYPE ) 0xcccc;
-	pxTopOfStack--;
-	*pxTopOfStack = ( portSTACK_TYPE ) 0xbbbb;
-	pxTopOfStack--;
-	*pxTopOfStack = ( portSTACK_TYPE ) 0xaaaa;
-	pxTopOfStack--;
-	*pxTopOfStack = ( portSTACK_TYPE ) 0x9999;
-	pxTopOfStack--;
-	*pxTopOfStack = ( portSTACK_TYPE ) 0x8888;
-	pxTopOfStack--;
-	*pxTopOfStack = ( portSTACK_TYPE ) 0x7777;
-	pxTopOfStack--;
-	*pxTopOfStack = ( portSTACK_TYPE ) 0x6666;
-	pxTopOfStack--;
-	*pxTopOfStack = ( portSTACK_TYPE ) 0x5555;
-	pxTopOfStack--;
-	*pxTopOfStack = ( portSTACK_TYPE ) 0x4444;
-	pxTopOfStack--;
+	/* Next the remaining general purpose registers: 4 through 14. */
+	for (usRegisterIndex = 14; usRegisterIndex >= 4; --usRegisterIndex)
+		pxTCB->uxRegisters[14 - usRegisterIndex] = usRegisterIndex;
 
 	/* The code generated by the mspgcc compiler does not maintain separate
 	stack and frame pointers. The portENTER_CRITICAL macro cannot therefore
 	use the stack as per other ports.  Instead a variable is used to keep
 	track of the critical section nesting.  This variable has to be stored
 	as part of the task context and is initially set to zero. */
-	*pxTopOfStack = ( portSTACK_TYPE ) portNO_CRITICAL_SECTION_NESTING;	
+	pxTCB->usCriticalNesting = ( portBASE_TYPE ) portNO_CRITICAL_SECTION_NESTING;	
 
 	/* Return a pointer to the top of the stack we have generated so this can
 	be stored in the task control block for the task. */
-	return pxTopOfStack;
+	return ( portSTACK_TYPE * )pxTCB;
 }
 /*-----------------------------------------------------------*/
 
@@ -310,11 +357,40 @@ void vPortYield( void )
 	was saved during a pre-emptive RTOS tick ISR.  Before calling an ISR the 
 	msp430 places the status register onto the stack.  As this is a function 
 	call and not an ISR we have to do this manually. */
+
+#if __MSP430X__ & __MSP430_CPUX_TARGET_C20__
+	/* On call entry with 20-bit addresses, r1 points to the low 16
+    bits of the return address; the high 4 bits of the return address
+    are in the low 4 bits of the next word on the stack.
+
+    On interrupt entry, r1 points to a 16-bit value where the high 4
+    bits are the high 4 bits of the return address, the low 12 bits
+    are from the status register, and the next word on the stack has
+    the low 16 bits of the return address.
+
+    Perform the contortions necessary to convert from one to the
+    other. */
+	  
+	__asm__ __volatile__ ( "pushm.a	#1, r15		\n\t" /* get a scratch register */
+						   "mova	4(r1), r15	\n\t" /* get the return address */
+						   "mov		r2, 4(r1)	\n\t" /* save the status register */
+						   "dint				\n\t" /* disable interrupts */
+						   "mov		r15, 6(r1)	\n\t" /* save the low 16 bits of the return address */
+						   "rrum.a	#4, r15		\n\t" /* shift the high 4 bits down to bits 15..12 */
+						   "bic		#0x0FFF, r15\n\t" /* mask off the low 12 bits */
+						   "bis		r15, 4(r1)	\n\t" /* store the high 4 bits of the return address */
+						   );
+	/* Save the context of the current task (excluding R15). */
+	portSAVE_CONTEXT_TAIL();
+#else
+	/* On call entry with 16-bit addresses, this is easy. */
 	__asm__ __volatile__( "push\tr2" );
 	__disable_interrupt();
 
 	/* Save the context of the current task. */
 	portSAVE_CONTEXT();
+#endif
+
 
 	/* Switch to the highest priority task that is ready to run. */
 	vTaskSwitchContext();
