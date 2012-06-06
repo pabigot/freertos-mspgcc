@@ -50,7 +50,7 @@ CPPFLAGS = -I. -I$(BSP430_PATH) -I$(PORT_PATH)
 CPPFLAGS += -I$(SOURCE_PATH)/include
 CPPFLAGS += -I$(FREERTOS_ROOT)/Demo/Common/include
 
-CFLAGS = -mmcu=$(MCU) $(OPT_CFLAGS) -ggdb $(WARN_CFLAGS)
+CFLAGS = -mmcu=$(MCU) $(OPT_CFLAGS) -ggdb $(WARN_CFLAGS) $(XCFLAGS)
 
 SRC = \
 $(SOURCE_PATH)/tasks.c \

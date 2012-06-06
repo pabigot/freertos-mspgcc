@@ -73,7 +73,9 @@
  * If not defined, FLL will be disabled on platforms subject to UCS10 */
 // #define portDISABLE_FLL 0
 
+#ifndef configUSE_PREEMPTION
 #define configUSE_PREEMPTION		1
+#endif /* configUSE_PREEMPTION */
 #define configUSE_IDLE_HOOK			1
 #define configUSE_TICK_HOOK			0
 //#define configCPU_CLOCK_HZ			1000000UL

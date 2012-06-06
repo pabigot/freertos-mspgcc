@@ -42,6 +42,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "queue.h"
 #include <stdio.h>
 #include <string.h>
+#include <inttypes.h>
 
 #define mainLED_TASK_PRIORITY ( tskIDLE_PRIORITY + 1 )
 #define mainSHOWDCO_TASK_PRIORITY ( tskIDLE_PRIORITY + 1 )
@@ -170,7 +171,32 @@ int main( void )
 	prvSetupHardware();
 	vParTestInitialise();
 
-	printf("Up and running\n");
+	printf("Up and running"
+		   "\n20-bit aware: "
+#if __MSP430X__ & ( __MSP430_CPUX_TARGET_SR20__ | __MSP430_CPUX_TARGET_ISR20__ )
+		   "YES"
+#else
+		   "no"
+#endif
+		   "; calls 20-bit: "
+#if __MSP430X__ & __MSP430_CPUX_TARGET_C20__
+		   "YES"
+#else
+		   "no"
+#endif
+		   "; data 20-bit: "
+#if __MSP430X__ & __MSP430_CPUX_TARGET_D20__
+		   "YES"
+#else
+		   "no"
+#endif
+		   "\nPreemption "
+#if configUSE_PREEMPTION
+		   "ON"
+#else
+		   "OFF"
+#endif
+		   "\n");
 	showDCO();
 	
 	vStartLEDFlashTasks( mainLED_TASK_PRIORITY );
