@@ -33,6 +33,7 @@ POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "utility/led.h"
+#include <task.h>
 
 /** Macro to configure GPIO for a LED within a particular port.
  *
