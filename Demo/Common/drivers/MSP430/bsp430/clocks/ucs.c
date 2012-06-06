@@ -61,13 +61,13 @@ unsigned long ulBSP430ucsTrimFLL ()
 	short taps_left = 32;
 	unsigned short last_ctl0;
 	uint16_t tolerance_tsp;
-	uint16_t current_frequency_tsp;
+	uint16_t current_frequency_tsp = 0;
 
 	last_ctl0 = ~0;
 	tolerance_tsp = targetFrequency_tsp_ / TRIM_TOLERANCE_DIVISOR;
 	while( 0 < taps_left--) {
 		int i;
-		unsigned int c0;
+		unsigned int c0 = 0;
 		unsigned int c1;
 		uint16_t abs_freq_err_tsp;
 
@@ -157,7 +157,6 @@ unsigned long ulBSP430ucsConfigure ( unsigned long ulFrequency_Hz,
 	};
 	unsigned portBASE_TYPE ctl1;
 	unsigned portBASE_TYPE ctl2;
-	unsigned portBASE_TYPE ctl3;
 	unsigned long ulReturn;
 	
 	/* If not told what RSEL to use, pick the one appropriate for the
