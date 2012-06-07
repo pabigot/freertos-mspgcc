@@ -54,6 +54,7 @@
 #ifndef PORTMACRO_H
 #define PORTMACRO_H
 
+#include <msp430.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -139,7 +140,7 @@ extern void vPortYield( void ) __attribute__ ( ( __naked__ ) );
 /* Hardwware specifics. */
 #define portBYTE_ALIGNMENT			2
 #define portSTACK_GROWTH			( -1 )
-#define portTICK_RATE_MS			( ( portTickType ) 1000 / configTICK_RATE_HZ )		
+#define portTICK_RATE_MS			( ( portTickType ) 1000 / configTICK_RATE_HZ )
 /*-----------------------------------------------------------*/
 
 /* Task function macros as described on the FreeRTOS.org WEB site. */
@@ -156,11 +157,13 @@ extern void vPortYield( void ) __attribute__ ( ( __naked__ ) );
 #define portDISABLE_FLL 1
 #endif
 #endif
+#if ! defined( portLPM_bits )
 #if portDISABLE_FLL
 #define portLPM_bits ( SCG1 + OSCOFF + CPUOFF )
 #else /* portDISABLE_FLL */
 #define portLPM_bits LPM4_bits
 #endif /* portDISABLE_FLL */
+#endif /* portLPM_bits */
 
 #ifdef __cplusplus
 }
