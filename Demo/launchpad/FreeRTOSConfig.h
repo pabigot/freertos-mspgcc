@@ -54,8 +54,6 @@
 #ifndef FREERTOS_CONFIG_H
 #define FREERTOS_CONFIG_H
 
-#include <msp430.h>
-
 /*-----------------------------------------------------------
  * Application specific definitions.
  *
@@ -68,29 +66,35 @@
  * See http://www.freertos.org/a00110.html.
  *----------------------------------------------------------*/
 
+/* Launchpad may not have a crystal installed/functional.  If crystal
+ * is present, ACLK is at 32 kiHz.  If it's absent, VLOCLK is used
+ * which is nominally 12 kHz. */
+#define portACLK_FREQUENCY_HZ		( ( IFG1 & OFIFG ) ? 12000U : 32768U )
+
 #define configUSE_PREEMPTION		1
 #define configUSE_IDLE_HOOK			1
 #define configUSE_TICK_HOOK			0
-/* Clock setup from main.c. */
-#define configCPU_CLOCK_HZ			( ( unsigned long ) 977000 )
-#define configTICK_RATE_HZ			( ( portTickType ) 1000 )
-#define configMAX_PRIORITIES		( ( unsigned portBASE_TYPE ) 4 )
-#define configMINIMAL_STACK_SIZE	( ( unsigned short ) 50 )
-/* The msp430g2553 has 512 B of RAM.  298 is the minimum to
-   successfully allocate the coroutines; more than that starts causing
-   stack overwrites. */
-#define configTOTAL_HEAP_SIZE		( ( size_t ) ( 298 ) )
-#define configMAX_TASK_NAME_LEN		( 1 )
+/* Clock setup from main.c.  Nominal PUC MCLK is 1.1 MHz.  Constants
+are available to configure 1 MHz, 8 MHz, 12 MHz, and 16 MHz.  Note:
+GCC performs preprocessor arithmetic using 64-bit integers, so the
+fact that this frequency cannot be represented in the base type is
+irrelevant at this point. */
+#define configCPU_CLOCK_HZ			12000000UL
+
+#define configTICK_RATE_HZ			1000
+#define configMAX_PRIORITIES		4
+#define configMINIMAL_STACK_SIZE	50
+/* The msp430g2553 has 512 B of RAM.  256 (298 for gcc 4.6?) is the
+   minimum to successfully allocate the coroutines; more than that
+   starts causing stack overwrites. */
+#define configTOTAL_HEAP_SIZE		256
+#define configMAX_TASK_NAME_LEN		1
 #define configUSE_TRACE_FACILITY	0
 #define configUSE_16_BIT_TICKS		1
 #define configIDLE_SHOULD_YIELD		1
 
-/* Co-routine definitions. */
 #define configUSE_CO_ROUTINES 		1
-#define configMAX_CO_ROUTINE_PRIORITIES ( 2 )
-
-/* Set the following definitions to 1 to include the API function, or zero
-to exclude the API function. */
+#define configMAX_CO_ROUTINE_PRIORITIES	2
 
 #define INCLUDE_vTaskPrioritySet		0
 #define INCLUDE_uxTaskPriorityGet		0

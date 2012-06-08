@@ -58,6 +58,7 @@ $(SOURCE_PATH)/croutine.c \
 $(SOURCE_PATH)/portable/MemMang/heap_1.c \
 $(PORT_PATH)/port.c \
 $(DEMO_PATH)/crflash.c \
+$(BSP430_PATH)/clocks/bc2.c \
 $(BSP430_PATH)/utility/led.c \
 $(BSP430_PATH)/ParTest.c \
 main.c

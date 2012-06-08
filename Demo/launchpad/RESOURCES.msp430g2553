@@ -1,0 +1,45 @@
+MSP430G2553
+***********
+
+16 kiB FLASH
+512 B RAM
+
+BSP Managed Peripherals
+=======================
+
+PORT1_R
+-------
+
+P1.1 - UCA0RXD
+P1.2 - UCA0TXD
+
+PORT2_R
+-------
+
+P2.6 - XIN
+P2.7 - XOUT
+
+T0A3
+----
+
+Tied to ACLK, continuous mode.  Clock enabled on power-up when crystal
+stabilized, and runs continuously.
+
+ CCR0 : Compare mode, interrupt at  kHz for context switching
+ CCR1
+ CCR2-CCR4 : Unassigned
+ IFG : Overflow counter for uptime clock
+
+BC2
+---
+
+Unused
+======
+
+ADC10
+CAPLUS
+FLASH2
+PORT3_R
+T1A3
+USCI
+WDT
