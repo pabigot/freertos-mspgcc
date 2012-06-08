@@ -1,13 +1,17 @@
 MSP430F5438A
+************
 
 256 kiB FLASH
 16 kiB RAM
+
+BSP Managed Peripherals
+=======================
 
 
 MPY32
 -----
 
-As needed by application.
+As needed by application, under compiler control
 
 
 PORT1
@@ -69,17 +73,14 @@ MCLK referenced to DCOCLKDIV
 
 Due to errata UCS7 and UCS10, the FLL is normally disabled.
 
-USCI_A0
--------
-
-HDLC interface, 115200 8N1 or faster
-
-
 USCI_A1
 -------
 
-Standard console, 9600 8N1 clocked by ACLK at 32768 Hz.
+Standard console, 9600 8N1 clocked by ACLK at 32768 Hz.  TXD @ P5.6, RXD @
+P5.7.
 
+Unused
+======
 
 ADC12
 CRC
@@ -106,6 +107,7 @@ RTC
 SFR
 SYS
 T1A3
+USCI_A0
 USCI_B0
 USCI_B1
 USCI_A2
