@@ -71,11 +71,6 @@
  *----------------------------------------------------------*/
 
 /* Constants required for hardware setup.  */
-#ifndef portACLK_FREQUENCY_HZ
-/* The tick ISR runs off the ACLK, not the MCLK.  This is normally 32
-kiHz, but may be another value if the crystal is unavailable. */
-#define portACLK_FREQUENCY_HZ			( ( portTickType ) 32768 )
-#endif /* portACLK_FREQUENCY_HZ */
 #define portINITIAL_CRITICAL_NESTING	( ( unsigned short ) 10 )
 #if portDISABLE_FLL
 #define portTASK_INITIAL_R2	( ( portBASE_TYPE ) ( GIE | SCG0 ) )

@@ -82,6 +82,18 @@ extern "C" {
 /* Beware: this is only valid for data pointers, not function pointers */
 #define portPOINTER_SIZE_TYPE uintptr_t
 
+#ifndef portACLK_FREQUENCY_HZ
+/* The tick ISR runs off the ACLK, not the MCLK.  This is normally 32
+ * kiHz, but may be another value if the crystal is unavailable and
+ * ACLK derives from VLOCLK.  That value is MCU-specific; e.g.  for
+ * the MSP430G2553 a reasonable definition is:
+ *     ((IFG1 & OFIFG) ? * 12000U : 32768U)
+ * As implied by this, the value is not necessarily a constant, though it
+ * should remain constant after the platform is configured.
+ */
+#define portACLK_FREQUENCY_HZ			32768U
+#endif /* portACLK_FREQUENCY_HZ */
+
 #if( configUSE_16_BIT_TICKS == 1 )
 	typedef unsigned portSHORT portTickType;
 	#define portMAX_DELAY ( portTickType ) 0xffff
