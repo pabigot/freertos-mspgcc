@@ -3,6 +3,7 @@
 #include "timers/timerA0.h"
 #include "utility/led.h"
 #include "serial.h"
+#include "portSerial.h"
 
 const xLEDDefn pxLEDDefn[] = {
 	{ .pucPxOUT = &P1OUT, .ucBIT = BIT0 }, /* Red */
@@ -15,15 +16,11 @@ static xComPortHandle console;
 int
 putchar (int c)
 {
-  /* Spin until tx buffer ready */
-  while (!(UCA1IFG & UCTXIFG)) {
-    ;
-  }
-  /* Transmit the character */
-  UCA1TXBUF = c;
-
-  return c;
-}
+	if (pdPASS == xSerialPutChar(console, c, 0)) {
+		return c;
+	}
+	return -1;
+}	
 
 void vBSP430platformSetup ()
 {
@@ -38,5 +35,9 @@ void vBSP430platformSetup ()
 	vBSP430timerA0Configure();
 
 	/* Enable console */
+	portSerialAssignPins(serCOM1, &P3SEL, BIT4, BIT5);
+	portSerialAssignPins(serCOM2, &P5SEL, BIT6, BIT7);
+	portSerialAssignPins(serCOM3, &P9SEL, BIT4, BIT5);
+	portSerialAssignPins(serCOM4, &P10SEL, BIT4, BIT5);
 	console = xSerialPortInitMinimal(0, 0);
 }
