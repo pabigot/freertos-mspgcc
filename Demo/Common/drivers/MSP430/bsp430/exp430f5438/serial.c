@@ -131,7 +131,10 @@ portSerialAssignPins (eCOMPort ePort,
 xComPortHandle
 xSerialPortInitMinimal (unsigned long ulWantedBaud, unsigned portBASE_TYPE uxQueueLength)
 {
-	xComPort *port = prvComPorts+1; /* HACK bypass first for now */
+	xComPort *port;
+
+	/* Locate an unused port */
+	port = prvComPorts;
 	while (port < prvComPorts_end && (port->flags & COM_PORT_ACTIVE)) {
 		++port;
 	}
@@ -146,10 +149,48 @@ xSerialPortInitMinimal (unsigned long ulWantedBaud, unsigned portBASE_TYPE uxQue
 	return (xComPortHandle)port;
 }
 
+static unsigned long
+prvBaudEnumToValue (eBaud baud_enum)
+{
+	switch (baud_enum) {
+	case ser50: return 50;
+	case ser75: return 75;
+	case ser110: return 110;
+	case ser134: return 134;
+	case ser150: return 150;
+	case ser200: return 200;
+	case ser300: return 300;
+	case ser600: return 600;
+	case ser1200: return 1200;
+	case ser1800: return 1800;
+	case ser2400: return 2400;
+	case ser4800: return 4800;
+	case ser9600: return 9600;
+	case ser19200: return 19200;
+	case ser38400: return 38400;
+	case ser57600: return 57600;
+	case ser115200: return 115200;
+	default: return 0;
+	}
+	return 0;
+}
+
 xComPortHandle
 xSerialPortInit (eCOMPort ePort, eBaud eWantedBaud, eParity eWantedParity, eDataBits eWantedDataBits, eStopBits eWantedStopBits, unsigned portBASE_TYPE uxBufferLength)
 {
-	return 0;
+	xComPort* port;
+	if (ePort >= prvCOMPortInvalid) {
+		return NULL;
+	}
+	port = prvComPorts + (unsigned int)ePort;
+	if (port->flags & COM_PORT_ACTIVE) {
+		unconfigurePort_(port);
+	}
+	port = configurePort_(port, prvBaudEnumToValue(eWantedBaud), uxBufferLength);
+	if (NULL != port) {
+		port->uca->ctlw0 &= ~UCSWRST;
+	}
+	return (xComPortHandle)port;
 }
 
 void
