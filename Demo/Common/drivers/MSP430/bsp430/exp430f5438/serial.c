@@ -51,18 +51,49 @@ typedef struct __attribute__((__packed__)) xUSCI_A_UART
 	unsigned int iv;
 } xUSCI_A_UART;
 
+#define COM_PORT_ACTIVE  0x01
+
+typedef struct xComPort {
+	unsigned int flags;
+	volatile xUSCI_A_UART * const uca;
+} xComPort;
+
+static xComPort prvComPorts[] = {
+#if defined(__MSP430_HAS_USCI_A0__)
+	{ .uca = (volatile xUSCI_A_UART *)__MSP430_BASEADDRESS_USCI_A0__ },
+#endif /* __MSP430_HAS_USCI_A0__ */
+#if defined(__MSP430_HAS_USCI_A1__)
+	{ .uca = (volatile xUSCI_A_UART *)__MSP430_BASEADDRESS_USCI_A1__ },
+#endif /* __MSP430_HAS_USCI_A1__ */
+#if defined(__MSP430_HAS_USCI_A2__)
+	{ .uca = (volatile xUSCI_A_UART *)__MSP430_BASEADDRESS_USCI_A2__ },
+#endif /* __MSP430_HAS_USCI_A2__ */
+#if defined(__MSP430_HAS_USCI_A3__)
+	{ .uca = (volatile xUSCI_A_UART *)__MSP430_BASEADDRESS_USCI_A3__ },
+#endif /* __MSP430_HAS_USCI_A3__ */
+};
+
+static const xComPort * const prvComPorts_end = prvComPorts + sizeof(prvComPorts)/sizeof(*prvComPorts);
+
 xComPortHandle
 xSerialPortInitMinimal (unsigned long ulWantedBaud, unsigned portBASE_TYPE uxQueueLength)
 {
-	volatile xUSCI_A_UART* uca1 = (volatile xUSCI_A_UART*) __MSP430_BASEADDRESS_USCI_A1__;
+	xComPort *port = prvComPorts+1; /* HACK bypass first for now */
+	while (port < prvComPorts_end && (port->flags & COM_PORT_ACTIVE)) {
+		++port;
+	}
+	if (prvComPorts_end == port) {
+		return NULL;
+	}
+	port->flags |= COM_PORT_ACTIVE;
 
 	/* Hold the UART in reset during configuration */
-	uca1->ctlw0 = UCSWRST | UCSSEL__ACLK;
-	uca1->brw = 3;
-	uca1->mctl = (0 * UCBRF_1) | (3 * UCBRS_1);
+	port->uca->ctlw0 = UCSWRST | UCSSEL__ACLK;
+	port->uca->brw = 3;
+	port->uca->mctl = (0 * UCBRF_1) | (3 * UCBRS_1);
 	P5SEL |= BIT6 | BIT7;
-	uca1->ctlw0 &= ~UCSWRST;
-	return 0;
+	port->uca->ctlw0 &= ~UCSWRST;
+	return (xComPortHandle)port;
 }
 
 xComPortHandle
@@ -85,7 +116,19 @@ xSerialGetChar (xComPortHandle pxPort, signed char *pcRxedChar, portTickType xBl
 signed portBASE_TYPE
 xSerialPutChar (xComPortHandle pxPort, signed char cOutChar, portTickType xBlockTime)
 {
-	return -1;
+	xComPort* port = (xComPort*)pxPort;
+
+	if (NULL == port) {
+		return pdFAIL;
+	}
+	/* Spin until tx buffer ready */
+	while (!(port->uca->ifg & UCTXIFG)) {
+		;
+	}
+	/* Transmit the character */
+	port->uca->txbuf = cOutChar;
+
+	return pdPASS;
 }
 
 portBASE_TYPE

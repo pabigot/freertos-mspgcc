@@ -10,6 +10,8 @@ const xLEDDefn pxLEDDefn[] = {
 };
 const unsigned char ucLEDDefnCount = sizeof(pxLEDDefn) / sizeof(*pxLEDDefn);
 
+static xComPortHandle console;
+
 int
 putchar (int c)
 {
@@ -36,5 +38,5 @@ void vBSP430platformSetup ()
 	vBSP430timerA0Configure();
 
 	/* Enable console */
-	xSerialPortInitMinimal(0, 0);
+	console = xSerialPortInitMinimal(0, 0);
 }
