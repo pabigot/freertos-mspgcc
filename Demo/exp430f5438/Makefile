@@ -63,6 +63,7 @@ $(BSP430_PATH)/utility/led.c \
 $(BSP430_PATH)/clocks/ucs.c \
 $(BSP430_PATH)/timers/timerA0.c \
 $(BSP430_PATH)/$(PLATFORM)/platform.c \
+$(BSP430_PATH)/$(PLATFORM)/serial.c \
 $(BSP430_PATH)/ParTest.c \
 main.c
 
