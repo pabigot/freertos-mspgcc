@@ -35,6 +35,13 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "clocks/ucs.h"
 #include <stdint.h>
 
+#ifndef configPORT_SMCLK_DIVIDING_SHIFT
+/** SMCLK is configured to divide DCOCLK by shifting it left this many
+ * positions.  E.g., if DCOCLK is 20 MHz, a dividing shift of 4 will
+ * produce an SMCLK of 5 MHz. */
+#define configPORT_SMCLK_DIVIDING_SHIFT 0
+#endif /* configPORT_SMCLK_DIVIDING_SHIFT */
+
 /* Frequency measurement occurs over this duration when determining
  * whether trim is required.  The number of SMCLK ticks in an ACLK
  * period is the target frequency divided by 32768; accumulating over
@@ -55,6 +62,9 @@ POSSIBILITY OF SUCH DAMAGE.
 /* The target frequency expressed as the number of SMCLK ticks
  * expected within a trim sample period. */
 static uint16_t targetFrequency_tsp_;
+
+/* The last calculated trim frequency */
+static unsigned long lastTrimFrequency_Hz_;
 
 unsigned long ulBSP430ucsTrimFLL ()
 {
@@ -136,7 +146,19 @@ unsigned long ulBSP430ucsTrimFLL ()
 		TB0CTL = 0;
 		TB0CCTL0 = 0;
 	}
-	return current_frequency_tsp * (32768UL / TRIM_SAMPLE_PERIOD_ACLK);
+	lastTrimFrequency_Hz_ = current_frequency_tsp * (32768UL / TRIM_SAMPLE_PERIOD_ACLK);
+	lastTrimFrequency_Hz_ <<= configPORT_SMCLK_DIVIDING_SHIFT;
+	return lastTrimFrequency_Hz_;
+}
+
+unsigned long ulBSP430ucsMCLK_Hz ()
+{
+	return lastTrimFrequency_Hz_;
+}
+
+unsigned long ulBSP430ucsSMCLK_Hz ()
+{
+	return lastTrimFrequency_Hz_ >> configPORT_SMCLK_DIVIDING_SHIFT;
 }
 
 unsigned long ulBSP430ucsConfigure ( unsigned long ulFrequency_Hz,
@@ -195,6 +217,8 @@ unsigned long ulBSP430ucsConfigure ( unsigned long ulFrequency_Hz,
 	UCSCTL4 = SELA__XT1CLK | SELS__DCOCLKDIV | SELM__DCOCLKDIV;
 
 	targetFrequency_tsp_ = ulFrequency_Hz / (32768 / TRIM_SAMPLE_PERIOD_ACLK);
+	targetFrequency_tsp_ >>= configPORT_SMCLK_DIVIDING_SHIFT;
+
 	ulReturn = ulBSP430ucsTrimFLL();
 
 	/* Spin until DCO stabilized */
@@ -202,6 +226,8 @@ unsigned long ulBSP430ucsConfigure ( unsigned long ulFrequency_Hz,
 		UCSCTL7 &= ~(XT2OFFG + XT1LFOFFG + XT1HFOFFG + DCOFFG);
 		SFRIFG1 &= ~OFIFG;
 	} while (UCSCTL7 & DCOFFG);
+
+	UCSCTL5 = (0x70 & (configPORT_SMCLK_DIVIDING_SHIFT << 4));
 
 #if ! defined(portDISABLE_FLL)
 	/* Turn FLL back on */

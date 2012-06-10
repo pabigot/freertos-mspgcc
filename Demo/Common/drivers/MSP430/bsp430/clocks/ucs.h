@@ -100,4 +100,20 @@ unsigned long ulBSP430ucsConfigure ( unsigned long ulFrequency_Hz,
  */
 unsigned long ulBSP430ucsTrimFLL ();
 
+/** Return the last calculated MCLK frequency.
+ *
+ * This may be off if the FLL has drifted and not been trimmed
+ * recently.
+ *
+ * @return an estimate of the MCLK frequency, in Hz */
+unsigned long ulBSP430ucsMCLK_Hz ();
+
+/** Return the last calculated SMCLK frequency.
+ *
+ * This may be off if the FLL has drifted and not been trimmed
+ * recently.
+ *
+ * @return an estimate of the SMCLK frequency, in Hz */
+unsigned long ulBSP430ucsSMCLK_Hz ();
+
 #endif /* _BSP430_UCS_H_ */

@@ -83,6 +83,7 @@
 //#define configCPU_CLOCK_HZ			8000000UL
 //#define configCPU_CLOCK_HZ			16000000UL
 #define configCPU_CLOCK_HZ			20000000UL
+#define configPORT_SMCLK_DIVIDING_SHIFT	2
 #define configTICK_RATE_HZ			( ( portTickType ) 1000 )
 #define configMAX_PRIORITIES		( ( unsigned portBASE_TYPE ) 4 )
 #define configMINIMAL_STACK_SIZE	( ( unsigned short ) 300 )
