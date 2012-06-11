@@ -95,25 +95,27 @@ static portTASK_FUNCTION( vShowDCO, pvParameters )
 
 static xComPortHandle hsuart;
 
-static void
-uart_config (unsigned long ulBAUD)
-{
-	hsuart = xSerialPortInit(serCOM1, ser115200, serNO_PARITY, serBITS_8, serSTOP_1, 16);
-	portENABLE_INTERRUPTS();
-}
-
 static portTASK_FUNCTION( vSerialStuff, pvParameters )
 {
+	unsigned int nrx = 0;
 	( void ) pvParameters;
-	uart_config(115200);
+	hsuart = xSerialPortInit(serCOM1, ser115200, serNO_PARITY, serBITS_8, serSTOP_1, 16);
+	portENABLE_INTERRUPTS();
 	for(;;)
 	{
+		portBASE_TYPE rv;
 		signed char c;
 
-		if (xSerialGetChar(hsuart, &c, 10000)) {
+		if (xSerialGetChar(hsuart, &c, 5000)) {
+			++nrx;
 			putchar(c);
+			rv = xSerialPutChar(hsuart, c, 0);
+			if (pdTRUE != rv) {
+				printf("\nSERIAL PUT failed\n");
+			}
 		} else {
-			printf("Serial woke without rx\n");
+			printf("Serial woke without rx, nrx %u\n", nrx);
+			printf("UCA0: STAT %02x IFG %02x IE %02x\n", UCA0STAT, UCA0IFG, UCA0IE);
 		}
 	}
 }

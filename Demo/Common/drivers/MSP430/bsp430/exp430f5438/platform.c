@@ -39,5 +39,5 @@ void vBSP430platformSetup ()
 	portSerialAssignPins(serCOM2, &P5SEL, BIT6, BIT7);
 	portSerialAssignPins(serCOM3, &P9SEL, BIT4, BIT5);
 	portSerialAssignPins(serCOM4, &P10SEL, BIT4, BIT5);
-	console = xSerialPortInit(serCOM2, ser9600, serNO_PARITY, serBITS_8, serSTOP_1, 16);
+	console = xSerialPortInit(serCOM2, ser9600, serNO_PARITY, serBITS_8, serSTOP_1, 0);
 }

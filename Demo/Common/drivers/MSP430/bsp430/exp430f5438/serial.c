@@ -61,6 +61,7 @@ typedef struct xComPort {
 	unsigned int flags;
 	volatile xUSCI_A_UART * const uca;
 	xQueueHandle rx_queue;
+	xQueueHandle tx_queue;
 	volatile unsigned char * pxsel;
 	unsigned char bit_tx;
 	unsigned char bit_rx;
@@ -109,6 +110,12 @@ configurePort_ (xComPort* port,
 		if (NULL == port->rx_queue) {
 			return NULL;
 		}
+		port->tx_queue = xQueueCreate(bufsiz, sizeof(uint8_t));
+		if (NULL == port->tx_queue) {
+			vQueueDelete(port->rx_queue);
+			port->rx_queue = 0;
+			return NULL;
+		}
 	}
 
 	/* Prefer ACLK for rates that are low enough.  Use SMCLK for
@@ -131,11 +138,14 @@ configurePort_ (xComPort* port,
 	/* Mark the port active */
 	port->flags |= COM_PORT_ACTIVE;
 
-	/* Release the UART */
+	/* Release the USCI and enable the interrupts.  Interrupts are
+	 * cleared when UCSWRST is set. */
 	port->uca->ctlw0 &= ~UCSWRST;
-
-	if (serCOM2 != (port - prvComPorts)) {
+	if (0 != port->rx_queue) {
 		port->uca->ie |= UCRXIE;
+	}
+	if (0 != port->tx_queue) {
+		port->uca->ie |= UCTXIE;
 	}
 
 	return port;
@@ -149,6 +159,10 @@ unconfigurePort_ (xComPort* port)
 	if (0 != port->rx_queue) {
 		vQueueDelete(port->rx_queue);
 		port->rx_queue = 0;
+	}
+	if (0 != port->tx_queue) {
+		vQueueDelete(port->tx_queue);
+		port->tx_queue = 0;
 	}
 	port->flags = 0;
 }
@@ -242,7 +256,7 @@ xSerialGetChar (xComPortHandle pxPort, signed char *pcRxedChar, portTickType xBl
 	if (NULL == port) {
 		return pdFAIL;
 	}
-	if (serCOM2 == (port - prvComPorts)) {
+	if (0 == port->rx_queue) {
 		return pdFAIL;
 	}
 	return xQueueReceive (port->rx_queue, pcRxedChar, xBlockTime);
@@ -252,18 +266,25 @@ signed portBASE_TYPE
 xSerialPutChar (xComPortHandle pxPort, signed char cOutChar, portTickType xBlockTime)
 {
 	xComPort* port = (xComPort*)pxPort;
+	portBASE_TYPE rv;
 
 	if (NULL == port) {
 		return pdFAIL;
 	}
-	/* Spin until tx buffer ready */
-	while (!(port->uca->ifg & UCTXIFG)) {
-		;
+	if (0 == port->tx_queue) {
+		/* Spin until tx buffer ready */
+		while (!(port->uca->ifg & UCTXIFG)) {
+			;
+		}
+		/* Transmit the character */
+		port->uca->txbuf = cOutChar;
+		return pdPASS;
 	}
-	/* Transmit the character */
-	port->uca->txbuf = cOutChar;
-
-	return pdPASS;
+	rv = xQueueSendToBack(port->tx_queue, &cOutChar, xBlockTime);
+	if (pdTRUE == rv) {
+		port->uca->ifg |= UCTXIFG;
+	}
+	return pdTRUE == rv;
 }
 
 portBASE_TYPE
@@ -309,22 +330,27 @@ static void
 __attribute__((__interrupt__(USCI_A0_VECTOR)))
 usci_a0_irq (void)
 {
-	portBASE_TYPE xHigherPriorityTaskWoken;
-	portBASE_TYPE rv;
+	portBASE_TYPE yield = pdFALSE;
+	portBASE_TYPE rv = pdFALSE;
 	uint8_t c;
 	xComPort* port = prvComPorts + 0;
 
 	switch (port->uca->iv) {
 	default:
 	case USCI_NONE:
+		break;
 	case USCI_UCTXIFG:
+		rv = xQueueReceiveFromISR(port->tx_queue, &c, &yield);
+		if (rv) {
+			port->uca->txbuf = c;
+		}
 		break;
 	case USCI_UCRXIFG:
 		c = port->uca->rxbuf;
-		rv = xQueueSendToFrontFromISR(port->rx_queue, &c, &xHigherPriorityTaskWoken);
-		if ((pdPASS == rv) && (pdTRUE == xHigherPriorityTaskWoken)) {
-			portYIELD();
-		}
+		rv = xQueueSendToFrontFromISR(port->rx_queue, &c, &yield);
 		break;
+	}
+	if ((pdPASS == rv) && (pdTRUE == yield)) {
+		portYIELD();
 	}
 }
