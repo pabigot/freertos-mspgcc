@@ -1,5 +1,7 @@
 #include "platform.h"
 #include "portSerial.h"
+#include "queue.h"
+#include <clocks/ucs.h>
 
 /* Register map for USCI_Ax peripheral in UART mode.  This
  * intentionally uses the GCC/ISO C11 extensions for unnamed
@@ -58,6 +60,7 @@ typedef struct __attribute__((__packed__)) xUSCI_A_UART
 typedef struct xComPort {
 	unsigned int flags;
 	volatile xUSCI_A_UART * const uca;
+	xQueueHandle rx_queue;
 	volatile unsigned char * pxsel;
 	unsigned char bit_tx;
 	unsigned char bit_rx;
@@ -86,20 +89,55 @@ configurePort_ (xComPort* port,
 				unsigned long baud,
 				size_t bufsiz)
 {
+	unsigned long brclk_hz;
+	uint16_t br;
+	uint16_t brs;
+
+	/* Reject invalid baud rates */
+	if ((0 == baud) || (1000000UL < baud)) {
+		return NULL;
+	}
+	
 	/* Reject if platform did not call portSerialAssignPins. */
 	if (! port->pxsel) {
 		return NULL;
 	}
 
-	/* Hold the UART in reset during configuration and when
-	 * returning */
-	port->uca->ctlw0 = UCSWRST | UCSSEL__ACLK;
-	port->uca->brw = 3;
-	port->uca->mctl = (0 * UCBRF_1) | (3 * UCBRS_1);
+	/* Reject if requested queue could not be allocated */
+	if (0 < bufsiz) {
+		port->rx_queue = xQueueCreate(bufsiz, sizeof(uint8_t));
+		if (NULL == port->rx_queue) {
+			return NULL;
+		}
+	}
+
+	/* Prefer ACLK for rates that are low enough.  Use SMCLK for
+	 * anything larger. */
+	if (portACLK_FREQUENCY_HZ >= (3 * baud)) {
+		port->uca->ctlw0 = UCSWRST | UCSSEL__ACLK;
+		brclk_hz = portACLK_FREQUENCY_HZ;
+	} else {
+		port->uca->ctlw0 = UCSWRST | UCSSEL__SMCLK;
+		brclk_hz = ulBSP430ucsSMCLK_Hz();
+	}
+	br = (brclk_hz / baud);
+	brs = (1 + 16 * (brclk_hz - baud * br) / baud) / 2;
+
+	port->uca->brw = br;
+	port->uca->mctl = (0 * UCBRF_1) | (brs * UCBRS_1);
+
 	*(port->pxsel) |= port->bit_tx | port->bit_rx;
 
 	/* Mark the port active */
 	port->flags |= COM_PORT_ACTIVE;
+
+	/* Release the UART */
+	port->uca->ctlw0 &= ~UCSWRST;
+
+	if (serCOM2 != (port - prvComPorts)) {
+		port->uca->ie |= UCRXIE;
+	}
+
 	return port;
 }
 
@@ -108,6 +146,10 @@ unconfigurePort_ (xComPort* port)
 {
 	port->uca->ctlw0 = UCSWRST;
 	*(port->pxsel) &= ~(port->bit_tx | port->bit_rx);
+	if (0 != port->rx_queue) {
+		vQueueDelete(port->rx_queue);
+		port->rx_queue = 0;
+	}
 	port->flags = 0;
 }
 
@@ -143,9 +185,6 @@ xSerialPortInitMinimal (unsigned long ulWantedBaud, unsigned portBASE_TYPE uxQue
 	}
 
 	port = configurePort_(port, ulWantedBaud, uxQueueLength);
-	if (NULL != port) {
-		port->uca->ctlw0 &= ~UCSWRST;
-	}
 	return (xComPortHandle)port;
 }
 
@@ -187,9 +226,6 @@ xSerialPortInit (eCOMPort ePort, eBaud eWantedBaud, eParity eWantedParity, eData
 		unconfigurePort_(port);
 	}
 	port = configurePort_(port, prvBaudEnumToValue(eWantedBaud), uxBufferLength);
-	if (NULL != port) {
-		port->uca->ctlw0 &= ~UCSWRST;
-	}
 	return (xComPortHandle)port;
 }
 
@@ -201,7 +237,15 @@ vSerialPutString (xComPortHandle pxPort, const signed char * const pcString, uns
 signed portBASE_TYPE
 xSerialGetChar (xComPortHandle pxPort, signed char *pcRxedChar, portTickType xBlockTime)
 {
-	return -1;
+	xComPort* port = (xComPort*)pxPort;
+
+	if (NULL == port) {
+		return pdFAIL;
+	}
+	if (serCOM2 == (port - prvComPorts)) {
+		return pdFAIL;
+	}
+	return xQueueReceive (port->rx_queue, pcRxedChar, xBlockTime);
 }
 
 signed portBASE_TYPE
@@ -260,3 +304,27 @@ checkValues ()
 	CHECK_VAL(UCA1IV, iv);
 }
 #endif
+
+static void
+__attribute__((__interrupt__(USCI_A0_VECTOR)))
+usci_a0_irq (void)
+{
+	portBASE_TYPE xHigherPriorityTaskWoken;
+	portBASE_TYPE rv;
+	uint8_t c;
+	xComPort* port = prvComPorts + 0;
+
+	switch (port->uca->iv) {
+	default:
+	case USCI_NONE:
+	case USCI_UCTXIFG:
+		break;
+	case USCI_UCRXIFG:
+		c = port->uca->rxbuf;
+		rv = xQueueSendToFrontFromISR(port->rx_queue, &c, &xHigherPriorityTaskWoken);
+		if ((pdPASS == rv) && (pdTRUE == xHigherPriorityTaskWoken)) {
+			portYIELD();
+		}
+		break;
+	}
+}

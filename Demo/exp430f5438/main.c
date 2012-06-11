@@ -40,6 +40,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "clocks/ucs.h"
 #include "timers/timerA0.h"
 #include "queue.h"
+#include "serial.h"
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
@@ -84,7 +85,7 @@ static portTASK_FUNCTION( vShowDCO, pvParameters )
 	{
 		unsigned long ticks;
 		
-		vTaskDelayUntil( &xLastWakeTime, 1000 );
+		vTaskDelayUntil( &xLastWakeTime, 3000 );
 		ticks = ulBSP430timerA0Ticks();
 		showDCO();
 		printf("%lu ticks since last wake, uptime %lu seconds\n", (ticks - last_ticks), ticks / 32768);
@@ -92,59 +93,13 @@ static portTASK_FUNCTION( vShowDCO, pvParameters )
 	}
 }
 
-static xQueueHandle xRxedChars; 
-volatile uint16_t nrx;
+static xComPortHandle hsuart;
 
 static void
 uart_config (unsigned long ulBAUD)
 {
-	uint16_t brw = (configCPU_CLOCK_HZ / ulBAUD);
-	uint16_t m = (1 + 16 * (configCPU_CLOCK_HZ - ulBAUD * brw) / ulBAUD) / 2;
-
-	printf("UCA0 brw %u m %u\n", brw, m);
-	portDISABLE_INTERRUPTS();
-
-	xRxedChars = xQueueCreate(16, sizeof(uint8_t));
-
-	/* Hold the UART in reset during configuration */
-	UCA0CTL1 |= UCSWRST;
-
-	UCA0CTLW0 = UCSWRST | UCSSEL__SMCLK;
-	UCA0BRW = brw;
-	UCA0MCTL = (m * UCBRF0);
-
-	P3SEL |= BIT4 | BIT5;
-	nrx = 0;
-	/* Release the UART */
-	UCA0CTL1 &= ~UCSWRST;
-	UCA0IE |= UCRXIE;
-
+	hsuart = xSerialPortInit(serCOM1, ser115200, serNO_PARITY, serBITS_8, serSTOP_1, 16);
 	portENABLE_INTERRUPTS();
-}
-
-volatile unsigned int nhp;
-
-static void
-__attribute__((__interrupt__(USCI_A0_VECTOR)))
-usci_a0_isr ()
-{
-	switch (UCA0IV) {
-	default:
-	case USCI_NONE:
-	case USCI_UCTXIFG:
-		break;
-	case USCI_UCRXIFG: {
-		portBASE_TYPE xHigherPriorityTaskWoken;
-		uint8_t c = UCA0RXBUF;
-
-		xQueueSendFromISR(xRxedChars, &c, &xHigherPriorityTaskWoken);
-		if (xHigherPriorityTaskWoken) {
-			++nhp;
-			taskYIELD();
-		}
-		break;
-	}
-	}
 }
 
 static portTASK_FUNCTION( vSerialStuff, pvParameters )
@@ -153,13 +108,10 @@ static portTASK_FUNCTION( vSerialStuff, pvParameters )
 	uart_config(115200);
 	for(;;)
 	{
-		uint8_t c;
+		signed char c;
 
-		if (xQueueReceive(xRxedChars, &c, 1200)) {
-			do {
-				putchar(c);
-				// printf("Got %d '%c', nhp %u\n", c, c, nhp);
-			} while (xQueueReceive(xRxedChars, &c, 0));
+		if (xSerialGetChar(hsuart, &c, 10000)) {
+			putchar(c);
 		} else {
 			printf("Serial woke without rx\n");
 		}
@@ -213,7 +165,7 @@ void vApplicationIdleHook( void ) { }
 static void prvSetupHardware( void )
 {
 	vBSP430platformSetup();
-	
+
 	/* P11.0: ACLK ; P11.1: MCLK; P11.2: SMCLK ; all available on test
 	 * points */
 	P11SEL |= BIT0 | BIT1 | BIT2;
