@@ -176,8 +176,9 @@ be an efficient interrupt implementation.  A real application should make use
 of the DMA.  Or, as a minimum, transmission and reception could use a simple
 RAM ring buffer, and synchronise with a task using a semaphore when a complete
 message has been received or transmitted. */
-#pragma vector=USCI_A1_VECTOR
-interrupt void prvUSCI_A1_ISR( void )
+static void
+__attribute__((__interrupt__(USCI_A1_VECTOR)))
+prvUSCI_A1_ISR( void )
 {
 signed char cChar;
 portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;

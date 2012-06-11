@@ -151,7 +151,7 @@
 #include "hal_MSP-EXP430F5438.h"
 
 /* Standard demo includes. */
-#include "ParTest.h"
+#include "partest.h"
 #include "dynamic.h"
 #include "comtest2.h"
 #include "GenQTest.h"
@@ -262,7 +262,12 @@ task. */
 typedef struct
 {
 	char cMessageID;				/* << States what the message is. */
-	unsigned long ulMessageValue; 	/* << States the message value (can be an integer, string pointer, etc. depending on the value of cMessageID). */
+	/** States the message value (can be an integer, string pointer, etc. depending on the value of cMessageID). */
+	union {
+		portBASE_TYPE xMessageValue;
+		unsigned long ulMessageValue;
+		char * pcMessageValue;
+	};
 } xQueueMessage;
 
 /*-----------------------------------------------------------*/
@@ -393,7 +398,7 @@ unsigned char ucLine = 1;
 												the	message.  This just 
 												demonstrates a different 
 												communication technique. */
-												sprintf( cBuffer, "%s", ( char * ) xReceivedMessage.ulMessageValue );
+												sprintf( cBuffer, "%s", ( char * ) xReceivedMessage.pcMessageValue );
 												break;
 												
 			case mainMESSAGE_STATUS			:	/* The tick interrupt hook
@@ -483,7 +488,7 @@ static unsigned short usLastRegTest1Counter = 0, usLastRegTest2Counter = 0;
 
 /* Define the status message that is sent to the LCD task.  By default the
 status is PASS. */
-static xQueueMessage xStatusMessage = { mainMESSAGE_STATUS, pdPASS };
+static xQueueMessage xStatusMessage = { .cMessageID=mainMESSAGE_STATUS, .xMessageValue=pdPASS };
 
 	/* This is the callback function used by the 'check' timer, as described
 	at the top of this file. */
@@ -593,11 +598,12 @@ static unsigned long ulCounter = 0;
 }
 /*-----------------------------------------------------------*/
 
-#pragma vector=PORT2_VECTOR
-interrupt void prvSelectButtonInterrupt( void )
+static void
+__attribute__((__interrupt__(PORT2_VECTOR)))
+prvSelectButtonInterrupt( void )
 {
 /* Define the message sent to the LCD task from this interrupt. */
-static const xQueueMessage xMessage = { mainMESSAGE_BUTTON_SEL, ( unsigned long ) "Select Interrupt" };
+static const xQueueMessage xMessage = { .cMessageID=mainMESSAGE_BUTTON_SEL, .pcMessageValue="Select Interrupt" };
 portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 
 	/* This is the interrupt handler for the joystick select button input.
