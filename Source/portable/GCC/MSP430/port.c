@@ -104,7 +104,11 @@ volatile unsigned short usCriticalNesting = portINITIAL_CRITICAL_NESTING;
 /*-----------------------------------------------------------*/
 
 #if __MSP430X__ & ( __MSP430_CPUX_TARGET_SR20__ | __MSP430_CPUX_TARGET_ISR20__ )
-/* Save 20-bit registers if somebody seems to be using 20-bit code. */
+/* Save 20-bit registers if somebody seems to be using 20-bit code.
+ * Yield in the context of 20-bit code may require manipulating
+ * the stack, which requires a scratch register, so portASM_PUSH_GEN_REGS_TAIL()
+ * completes the operation of portASM_PUSH_GEN_REGS assuming that r15
+ * has been pushed to the stack top. */
 
 #define portASM_PUSH_GEN_REGS					\
 	"pushm.a	#12, r15	\n\t"
@@ -202,7 +206,7 @@ volatile unsigned short usCriticalNesting = portINITIAL_CRITICAL_NESTING;
 						   :							\
 						   : "m"( usCriticalNesting ),	\
 							 "m"( pxCurrentTCB )		\
-						   );
+						   )
 
 #define portSAVE_CONTEXT_TAIL()							\
 	__asm__ __volatile__ ( portASM_PUSH_GEN_REGS_TAIL	\
@@ -210,7 +214,7 @@ volatile unsigned short usCriticalNesting = portINITIAL_CRITICAL_NESTING;
 						   :							\
 						   : "m"( usCriticalNesting ),	\
 							 "m"( pxCurrentTCB )		\
-						   );
+						   )
 
 /* 
  * Macro to restore a task context from the task stack.  This is effectively
@@ -230,7 +234,7 @@ volatile unsigned short usCriticalNesting = portINITIAL_CRITICAL_NESTING;
 						   : "=m"( usCriticalNesting )	\
 						   : "m"( pxCurrentTCB ),		\
 							 "i"( portLPM_bits )		\
-						   );
+						   )
 
 /*-----------------------------------------------------------*/
 
@@ -349,7 +353,7 @@ void vPortEndScheduler( void )
 /*-----------------------------------------------------------*/
 
 /*
- * Manual context switch called by portYIELD or taskYIELD.  
+ * Manual context switch called by portYIELD or taskYIELD.
  *
  * The first thing we do is save the registers so we can use a naked attribute.
  */

@@ -157,9 +157,12 @@ extern void vPortYield( void ) __attribute__ ( ( __naked__ ) );
 #define portDISABLE_FLL 1
 #endif
 #endif
+
 #if ! defined( portLPM_bits )
 #if portDISABLE_FLL
-#define portLPM_bits ( SCG1 + OSCOFF + CPUOFF )
+/* Exclude SCG0 from bits cleared on return, so FLL remains
+ * disabled. */
+#define portLPM_bits ( LPM4_bits & ~SCG0 )
 #else /* portDISABLE_FLL */
 #define portLPM_bits LPM4_bits
 #endif /* portDISABLE_FLL */
