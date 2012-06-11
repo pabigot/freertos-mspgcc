@@ -108,7 +108,6 @@ static portTASK_FUNCTION( vSerialStuff, pvParameters )
 
 		if (xSerialGetChar(hsuart, &c, 5000)) {
 			++nrx;
-			putchar(c);
 			rv = xSerialPutChar(hsuart, c, 0);
 			if (pdTRUE != rv) {
 				printf("\nSERIAL PUT failed\n");
