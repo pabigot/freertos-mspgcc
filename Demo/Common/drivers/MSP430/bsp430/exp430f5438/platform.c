@@ -3,6 +3,7 @@
 #include "timers/timerA0.h"
 #include "utility/led.h"
 #include "serial.h"
+#include <utility/console.h>
 #include "portSerial.h"
 
 const xLEDDefn pxLEDDefn[] = {
@@ -10,17 +11,6 @@ const xLEDDefn pxLEDDefn[] = {
 	{ .pucPxOUT = &P1OUT, .ucBIT = BIT1 }, /* Orange */
 };
 const unsigned char ucLEDDefnCount = sizeof(pxLEDDefn) / sizeof(*pxLEDDefn);
-
-static xComPortHandle console;
-
-int
-putchar (int c)
-{
-	if (pdPASS == xSerialPutChar(console, c, 0)) {
-		return c;
-	}
-	return -1;
-}	
 
 void vBSP430platformSetup ()
 {
@@ -39,5 +29,6 @@ void vBSP430platformSetup ()
 	portSerialAssignPins(serCOM2, &P5SEL, BIT6, BIT7);
 	portSerialAssignPins(serCOM3, &P9SEL, BIT4, BIT5);
 	portSerialAssignPins(serCOM4, &P10SEL, BIT4, BIT5);
-	console = xSerialPortInit(serCOM2, ser9600, serNO_PARITY, serBITS_8, serSTOP_1, 0);
+	xConsoleConfigure(xSerialPortInit(serCOM2, ser9600, serNO_PARITY, serBITS_8, serSTOP_1, 0),
+					  500);
 }

@@ -39,6 +39,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "platform.h"
 #include "clocks/ucs.h"
 #include "timers/timerA0.h"
+#include <utility/console.h>
 #include "queue.h"
 #include "serial.h"
 #include <stdio.h>
@@ -69,7 +70,7 @@ static void showDCO ()
 	} while (ctl0a != ctl0b);
 	portENABLE_INTERRUPTS();
 
-	printf("UCS: SR 0x%02x RSEL %u DCO %u MOD %u ; freq %lu\n", __read_status_register(), 0x07 & (UCSCTL1 >> 4), 0x1f & (ctl0a >> 8), 0x1f & (ctl0a >> 3), freq_Hz);
+	cprintf("UCS: SR 0x%02x RSEL %u DCO %u MOD %u ; freq %lu\n", __read_status_register(), 0x07 & (UCSCTL1 >> 4), 0x1f & (ctl0a >> 8), 0x1f & (ctl0a >> 3), freq_Hz);
 }
 
 static portTASK_FUNCTION( vShowDCO, pvParameters )
@@ -88,7 +89,7 @@ static portTASK_FUNCTION( vShowDCO, pvParameters )
 		vTaskDelayUntil( &xLastWakeTime, 3000 );
 		ticks = ulBSP430timerA0Ticks();
 		showDCO();
-		printf("%lu ticks since last wake, uptime %lu seconds\n", (ticks - last_ticks), ticks / 32768);
+		cprintf("%lu ticks since last wake, uptime %lu seconds\n", (ticks - last_ticks), ticks / 32768);
 		last_ticks = ticks;
 	}
 }
@@ -110,11 +111,11 @@ static portTASK_FUNCTION( vSerialStuff, pvParameters )
 			++nrx;
 			rv = xSerialPutChar(hsuart, c, 0);
 			if (pdTRUE != rv) {
-				printf("\nSERIAL PUT failed\n");
+				cprintf("\nSERIAL PUT failed\n");
 			}
 		} else {
-			printf("Serial woke without rx, nrx %u\n", nrx);
-			printf("UCA0: STAT %02x IFG %02x IE %02x\n", UCA0STAT, UCA0IFG, UCA0IE);
+			cprintf("Serial woke without rx, nrx %u\n", nrx);
+			cprintf("UCA0: STAT %02x IFG %02x IE %02x\n", UCA0STAT, UCA0IFG, UCA0IE);
 		}
 	}
 }
@@ -124,7 +125,7 @@ int main( void )
 	prvSetupHardware();
 	vParTestInitialise();
 
-	printf("Up and running"
+	cprintf("Up and running"
 		   "\n20-bit aware: "
 #if __MSP430X__ & ( __MSP430_CPUX_TARGET_SR20__ | __MSP430_CPUX_TARGET_ISR20__ )
 		   "YES"
