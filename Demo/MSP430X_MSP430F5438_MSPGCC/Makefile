@@ -17,13 +17,21 @@ OPT_CFLAGS ?= -Os -ffunction-sections -fdata-sections
 WARN_CFLAGS = -Wall -Wno-main
 OPT_LDFLAGS ?= -Wl,-gc-sections
 
-CPPFLAGS = -I. -I$(BSP430_PATH) -I$(PORT_PATH)
+CPPFLAGS = -I. -I$(PORT_PATH)
 CPPFLAGS += -I$(HAL_PATH) -I$(CORE_PATH)
 CPPFLAGS += -I$(SOURCE_PATH)/include
 CPPFLAGS += -I$(FREERTOS_ROOT)/Demo/Common/include
 
-CFLAGS=-mmcu=$(MCU) $(OPT_CFLAGS) -ggdb $(WARN_CFLAGS) $(XCFLAGS)
-LDFLAGS=-mmcu=$(MCU) $(OPT_LDFLAGS)
+# TARGET_FLAGS holds things like -msr20, -md20, -mc20, or -mmemory-model=.
+# Like -mmcu, it gets passed in both CFLAGS and LDFLAGS.
+ifndef TARGET_FLAGS
+ifdef MEMORY_MODEL
+TARGET_FLAGS=-mmemory-model=$(MEMORY_MODEL)
+endif # MEMORY_MODEL
+endif # TARGET_FLAGS
+
+CFLAGS=-mmcu=$(MCU) $(TARGET_FLAGS) $(OPT_CFLAGS) -ggdb $(WARN_CFLAGS) $(XCFLAGS)
+LDFLAGS=-mmcu=$(MCU) $(TARGET_FLAGS) $(OPT_LDFLAGS) -ggdb
 
 # Object file derived from assembler source including preprocessor
 %.o: %.S

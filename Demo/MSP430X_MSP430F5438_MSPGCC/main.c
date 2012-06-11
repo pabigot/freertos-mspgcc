@@ -355,6 +355,37 @@ unsigned char ucLine = 1;
 	halLcdPrintLine( cBuffer, ucLine, OVERWRITE_TEXT );
 	ucLine++;
 	
+	sprintf( cBuffer, "MSPGCC %lu", ( unsigned long ) __MSPGCC__ );
+	halLcdPrintLine( cBuffer, ucLine, OVERWRITE_TEXT );
+	ucLine++;
+
+#if __MSP430X__ & (__MSP430_CPUX_TARGET_SR20__ | __MSP430_CPUX_TARGET_ISR20__)
+	halLcdPrintLine( "++with 20-bit++", ucLine, OVERWRITE_TEXT );
+	ucLine++;
+
+	sprintf( cBuffer, "ma%02d mc%02d md%02d",
+#if __MSP430X__ & __MSP430_CPUX_TARGET_A20__
+			 20
+#else /* -ma20 */
+			 16
+#endif /* -ma20 */
+			 ,
+#if __MSP430X__ & __MSP430_CPUX_TARGET_C20__
+			 20
+#else /* -mc20 */
+			 16
+#endif /* -mc20 */
+			 ,
+#if __MSP430X__ & __MSP430_CPUX_TARGET_D20__
+			 20
+#else /* -md20 */
+			 16
+#endif /* -md20 */
+			 );
+	halLcdPrintLine( cBuffer, ucLine, OVERWRITE_TEXT );
+	ucLine++;
+#endif /* -msr20 */
+
 	/* Just as a test of the port, and for no functional reason, check the task
 	parameter contains its expected value. */
 	if( pvParameters != mainTASK_PARAMETER_CHECK_VALUE )
