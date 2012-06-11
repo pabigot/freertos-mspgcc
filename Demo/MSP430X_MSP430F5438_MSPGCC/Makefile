@@ -13,9 +13,10 @@ CC=$(CROSS_COMPILE)gcc
 LD=$(CROSS_COMPILE)ld
 AR=$(CROSS_COMPILE)ar
 
-OPT_CFLAGS ?= -Os -ffunction-sections -fdata-sections
+# Can't use -f*-sections until SF 3534425 is fixed
+OPT_CFLAGS ?= -Os # -ffunction-sections -fdata-sections
 WARN_CFLAGS = -Wall -Wno-main
-OPT_LDFLAGS ?= -Wl,-gc-sections
+OPT_LDFLAGS ?= # -Wl,-gc-sections
 
 CPPFLAGS = -I. -I$(PORT_PATH)
 CPPFLAGS += -I$(HAL_PATH) -I$(CORE_PATH)

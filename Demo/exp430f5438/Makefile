@@ -42,15 +42,26 @@ CC=$(CROSS_COMPILE)gcc
 LD=$(CROSS_COMPILE)ld
 AR=$(CROSS_COMPILE)ar
 
-OPT_CFLAGS ?= -Os
-
-WARN_CFLAGS = -Wall
+# Can't use -f*-sections until SF 3534425 is fixed
+OPT_CFLAGS ?= -Os # -ffunction-sections -fdata-sections
+WARN_CFLAGS = -Wall -Wno-main
+OPT_LDFLAGS ?= # -Wl,-gc-sections
 
 CPPFLAGS = -I. -I$(BSP430_PATH) -I$(PORT_PATH)
+CPPFLAGS += -I$(BSP430_PATH) 
 CPPFLAGS += -I$(SOURCE_PATH)/include
 CPPFLAGS += -I$(FREERTOS_ROOT)/Demo/Common/include
 
-CFLAGS = -mmcu=$(MCU) $(OPT_CFLAGS) -ggdb $(WARN_CFLAGS) $(XCFLAGS)
+# TARGET_FLAGS holds things like -msr20, -md20, -mc20, or -mmemory-model=.
+# Like -mmcu, it gets passed in both CFLAGS and LDFLAGS.
+ifndef TARGET_FLAGS
+ifdef MEMORY_MODEL
+TARGET_FLAGS=-mmemory-model=$(MEMORY_MODEL)
+endif # MEMORY_MODEL
+endif # TARGET_FLAGS
+
+CFLAGS = -mmcu=$(MCU) $(TARGET_FLAGS) $(OPT_CFLAGS) -ggdb $(WARN_CFLAGS) $(XCFLAGS)
+LDFLAGS=-mmcu=$(MCU) $(TARGET_FLAGS) $(OPT_LDFLAGS)
 
 SRC = \
 $(SOURCE_PATH)/tasks.c \
@@ -68,11 +79,15 @@ $(BSP430_PATH)/$(PLATFORM)/serial.c \
 $(BSP430_PATH)/ParTest.c \
 main.c
 
+%.s: %.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -S -o $@ $<
+
 OBJ = $(SRC:.c=.o)
 DEP = $(SRC:.c=.d)
 
 demo.elf: $(OBJ)
-	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(OBJ)
+	$(CC) -o $@ $(LDFLAGS) $(OBJ)
+	$(CROSS_COMPILE)size $@
 
 clean:
 	-rm -f $(OBJ)
