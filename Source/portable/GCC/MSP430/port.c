@@ -403,9 +403,14 @@ void vPortYield( void )
 
 /* Identical to vPortYield except that we know the stack has uses the
    16-bit calling convention even if we're running with 20-bit code
-   pointers.  We also skip disabling interrupts. */
- __attribute__ ( ( __naked__ ) )
-void vPortYieldFromISR( void )
+   pointers.  We also skip disabling interrupts since we're being
+   called from an ISR. */
+void
+#if __MSP430X__
+ __attribute__ ( ( __c16__ ) )
+#endif /* CPUX */
+__attribute__ ( ( __naked__ ) )
+vPortYieldFromISR( void )
 {
 	__asm__ __volatile__( "push\tr2" );
 	portSAVE_CONTEXT();

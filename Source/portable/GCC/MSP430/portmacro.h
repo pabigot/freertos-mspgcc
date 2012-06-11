@@ -146,7 +146,12 @@ extern volatile unsigned portSHORT usCriticalNesting;							\
 /* Task utilities. */
 extern void vPortYield( void ) __attribute__ ( ( __naked__ ) );
 #define portYIELD()					vPortYield()
-extern void vPortYieldFromISR( void ) __attribute__ ( ( __naked__ ) );
+void
+#if __MSP430X__
+ __attribute__ ( ( __c16__ ) )
+#endif /* CPUX */
+ __attribute__ ( ( __naked__ ) )
+vPortYieldFromISR( void );
 #define portYIELD_FROM_ISR(x) do {				\
 		if (x)	{								\
 			vPortYieldFromISR();				\
