@@ -326,14 +326,31 @@ checkValues ()
 }
 #endif
 
+/* Since the interrupt code is the same for all peripherals, on MCUs
+ * with multiple USCI devices it is more space efficient to share it.
+ * This does add an extra call/return for some minor cost in stack
+ * space.
+ *
+ * Making the implementation function __c16__ ensures it's legitimate
+ * to use portYIELD_FROM_ISR().
+ *
+ * Adding __always_inline__ supports maintainability by having a
+ * single implementation but speed by forcing the implementation into
+ * each handler.  It's a lot cleaner than defining the body as a
+ * macro.  GCC will normally inline the code if there's only one call
+ * point; there should be a configPORT_foo option to do so in other
+ * cases. */
+
 static void
-__attribute__((__interrupt__(USCI_A0_VECTOR)))
-usci_a0_irq (void)
+#if __MSP430X__
+ __attribute__((__c16__))
+#endif /* __MSP430X__ */
+/* __attribute__((__always_inline__)) */
+usci_irq (xComPort* port)
 {
 	portBASE_TYPE yield = pdFALSE;
 	portBASE_TYPE rv = pdFALSE;
 	uint8_t c;
-	xComPort* port = prvComPorts + 0;
 
 	switch (port->uca->iv) {
 	default:
@@ -351,6 +368,40 @@ usci_a0_irq (void)
 		break;
 	}
 	if ((pdPASS == rv) && (pdTRUE == yield)) {
-		portYIELD();
+		portYIELD_FROM_ISR();
 	}
 }
+
+#if defined(__MSP430_HAS_USCI_A0__)
+static void
+__attribute__((__interrupt__(USCI_A0_VECTOR)))
+usci_a0_irq (void)
+{
+	usci_irq(prvComPorts + 0);
+}
+#endif /* __MSP430_HAS_USCI_A1__ */
+#if defined(__MSP430_HAS_USCI_A1__)
+static void
+__attribute__((__interrupt__(USCI_A1_VECTOR)))
+usci_a1_irq (void)
+{
+	usci_irq(prvComPorts + 1);
+}
+#endif /* __MSP430_HAS_USCI_A0__ */
+#if defined(__MSP430_HAS_USCI_A2__)
+static void
+__attribute__((__interrupt__(USCI_A2_VECTOR)))
+usci_a2_irq (void)
+{
+	usci_irq(prvComPorts + 2);
+}
+#endif /* __MSP430_HAS_USCI_A2__ */
+#if defined(__MSP430_HAS_USCI_A3__)
+static void
+__attribute__((__interrupt__(USCI_A3_VECTOR)))
+usci_a3_irq (void)
+{
+	usci_irq(prvComPorts + 3);
+}
+#endif /* __MSP430_HAS_USCI_A3__ */
+/* No current MCU has more than 4 USCI_A instances */
