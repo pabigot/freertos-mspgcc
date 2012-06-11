@@ -1,6 +1,7 @@
 #include "platform.h"
 #include "portSerial.h"
 #include "queue.h"
+#include "semphr.h"
 #include <clocks/ucs.h>
 
 /* Register map for USCI_Ax peripheral in UART mode.  This
@@ -62,6 +63,16 @@ typedef struct xComPort {
 	volatile xUSCI_A_UART * const uca;
 	xQueueHandle rx_queue;
 	xQueueHandle tx_queue;
+
+	/* Semaphore to control enable of TX interrupts.  For efficient
+	 * interrupt-driven transmission, we rely on receipt of TXIFG to
+	 * indicate another character can be transmitted.  If there are no
+	 * more characters this notification is lost.  When a new
+	 * character arrives, we can't just set TXIFG to wake the ISR,
+	 * because we can't tell whether the character we queued caused
+	 * the transmit queue to become non-empty.  Use this semaphore as
+	 * a hand-off. */
+	xSemaphoreHandle tx_idle_sema;
 	volatile unsigned char * pxsel;
 	unsigned char bit_tx;
 	unsigned char bit_rx;
@@ -118,6 +129,14 @@ configurePort_ (xComPort* port,
 			port->rx_queue = 0;
 			return NULL;
 		}
+		vSemaphoreCreateBinary(port->tx_idle_sema);
+		if (NULL == port->tx_idle_sema) {
+			vQueueDelete(port->tx_queue);
+			port->tx_queue = 0;
+			vQueueDelete(port->rx_queue);
+			port->rx_queue = 0;
+			return NULL;
+		}
 	}
 
 	/* Prefer ACLK for rates that are low enough.  Use SMCLK for
@@ -146,9 +165,6 @@ configurePort_ (xComPort* port,
 	port->uca->ctlw0 &= ~UCSWRST;
 	if (0 != port->rx_queue) {
 		port->uca->ie |= UCRXIE;
-	}
-	if (0 != port->tx_queue) {
-		port->uca->ie |= UCTXIE;
 	}
 
 	return port;
@@ -288,8 +304,9 @@ xSerialPutChar (xComPortHandle pxPort, signed char cOutChar, portTickType xBlock
 		return pdPASS;
 	}
 	rv = xQueueSendToBack(port->tx_queue, &cOutChar, xBlockTime);
-	if (pdTRUE == rv) {
+	if (pdTRUE == rv && xSemaphoreTake(port->tx_idle_sema, 0)) {
 		port->uca->ifg |= UCTXIFG;
+		port->uca->ie |= UCTXIE;
 	}
 	return pdTRUE == rv;
 }
@@ -378,6 +395,12 @@ usci_irq (xComPort* port)
 		break;
 	case USCI_UCTXIFG:
 		rv = xQueueReceiveFromISR(port->tx_queue, &c, &yield);
+		if (0 == uxQueueMessagesWaiting(port->tx_queue)) {
+			signed portBASE_TYPE sema_yield = pdFALSE;
+			port->uca->ie &= ~UCTXIE;
+			xSemaphoreGiveFromISR(port->tx_idle_sema, &sema_yield);
+			yield |= sema_yield;
+		}
 		if (rv) {
 			++port->num_tx;
 			port->uca->txbuf = c;
