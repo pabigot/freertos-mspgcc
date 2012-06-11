@@ -147,7 +147,11 @@ extern volatile unsigned portSHORT usCriticalNesting;							\
 extern void vPortYield( void ) __attribute__ ( ( __naked__ ) );
 #define portYIELD()					vPortYield()
 extern void vPortYieldFromISR( void ) __attribute__ ( ( __naked__ ) );
-#define portYIELD_FROM_ISR()		vPortYieldFromISR()
+#define portYIELD_FROM_ISR(x) do {				\
+		if (x)	{								\
+			vPortYieldFromISR();				\
+		}										\
+	} while (0)
 #define portNOP()					__nop()
 /*-----------------------------------------------------------*/
 

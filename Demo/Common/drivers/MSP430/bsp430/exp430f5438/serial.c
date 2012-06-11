@@ -412,9 +412,7 @@ usci_irq (xComPort* port)
 		rv = xQueueSendToFrontFromISR(port->rx_queue, &c, &yield);
 		break;
 	}
-	if ((pdPASS == rv) && (pdTRUE == yield)) {
-		portYIELD_FROM_ISR();
-	}
+	portYIELD_FROM_ISR(yield);
 }
 
 #if defined(__MSP430_HAS_USCI_A0__)
