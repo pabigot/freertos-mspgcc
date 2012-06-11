@@ -65,6 +65,8 @@ typedef struct xComPort {
 	volatile unsigned char * pxsel;
 	unsigned char bit_tx;
 	unsigned char bit_rx;
+	unsigned long num_rx;
+	unsigned long num_tx;
 } xComPort;
 
 static xComPort prvComPorts[] = {
@@ -136,6 +138,7 @@ configurePort_ (xComPort* port,
 	*(port->pxsel) |= port->bit_tx | port->bit_rx;
 
 	/* Mark the port active */
+	port->num_rx = port->num_tx = 0;
 	port->flags |= COM_PORT_ACTIVE;
 
 	/* Release the USCI and enable the interrupts.  Interrupts are
@@ -246,6 +249,10 @@ xSerialPortInit (eCOMPort ePort, eBaud eWantedBaud, eParity eWantedParity, eData
 void
 vSerialPutString (xComPortHandle pxPort, const signed char * const pcString, unsigned short usStringLength)
 {
+	unsigned short i;
+	for (i = 0; i < usStringLength; ++i) {
+		xSerialPutChar(pxPort, pcString[i], 0);
+	}
 }
 
 signed portBASE_TYPE
@@ -286,6 +293,19 @@ xSerialPutChar (xComPortHandle pxPort, signed char cOutChar, portTickType xBlock
 	}
 	return pdTRUE == rv;
 }
+
+long ulSerialNumRx (xComPortHandle xPort)
+{
+	xComPort* port = (xComPort*)xPort;
+	return port ? port->num_rx : -1L;
+}
+
+long ulSerialNumTx (xComPortHandle xPort)
+{
+	xComPort* port = (xComPort*)xPort;
+	return port ? port->num_tx : -1L;
+}
+
 
 portBASE_TYPE
 xSerialWaitForSemaphore (xComPortHandle xPort)
@@ -359,11 +379,13 @@ usci_irq (xComPort* port)
 	case USCI_UCTXIFG:
 		rv = xQueueReceiveFromISR(port->tx_queue, &c, &yield);
 		if (rv) {
+			++port->num_tx;
 			port->uca->txbuf = c;
 		}
 		break;
 	case USCI_UCRXIFG:
 		c = port->uca->rxbuf;
+		++port->num_rx;
 		rv = xQueueSendToFrontFromISR(port->rx_queue, &c, &yield);
 		break;
 	}
