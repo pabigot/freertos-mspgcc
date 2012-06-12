@@ -239,7 +239,7 @@ typedef struct xTCB
 	portSAVED_REGISTER_TYPE uxRegisters[12];
 	unsigned short usPChiSR;
 	unsigned short usPClow;
-} __attribute__((__packed__)) xTCB;
+} xTCB;
 
 /* 
  * Initialise the stack of a task to look exactly as if a call to 
@@ -261,7 +261,7 @@ portSTACK_TYPE *pxPortInitialiseStack( portSTACK_TYPE *pxTopOfStack, pdTASK_CODE
 	task to use when it starts up. */
 #if __MSP430X__ & __MSP430_CPUX_TARGET_C20__
 	pxTCB->usPClow = ( unsigned short ) ( uint20_t ) pxCode;
-	pxTCB->usPChiSR = ( 0xF000 & ( unsigned short) ( ( ( uint20_t ) pxCode ) >> 4 ) );
+	pxTCB->usPChiSR = ( 0xF000 & ( unsigned short ) ( ( ( uint20_t ) pxCode ) >> 4 ) );
 	pxTCB->usPChiSR |= portTASK_INITIAL_R2;
 #else
 	pxTCB->usPClow = ( unsigned short ) pxCode;
