@@ -380,8 +380,7 @@ checkValues ()
 
 static void
 #if __MSP430X__
-/* @TODO: Section attribute required until SF3534323 fixed */
-__attribute__ ( ( __c16__, __section__ ( ".near.text" ) ) )
+__attribute__ ( ( __c16__ ) )
 #endif /* CPUX */
 /* __attribute__((__always_inline__)) */
 usci_irq (xComPort* port)

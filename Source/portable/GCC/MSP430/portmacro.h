@@ -57,6 +57,12 @@
 #include <msp430.h>
 #include <stdint.h>
 
+#if __MSPGCC__ <= 20120406
+#error FreeRTOS-MSPGCC requires version 20120407 or higher
+#elif __MSPGCC__ == 20120606
+#error MSPGCC 20120606 is buggy, update to 20120618 or higher
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -14,12 +14,12 @@ LD=$(CROSS_COMPILE)ld
 AR=$(CROSS_COMPILE)ar
 
 # Can't use -f*-sections until SF 3534425 is fixed
-OPT_CFLAGS ?= -Os # -ffunction-sections -fdata-sections
+OPT_CFLAGS ?= -Os -ffunction-sections -fdata-sections
 WARN_CFLAGS = -Wall -Wno-main
 # Turn off warnings related to brokenness in the TI code
 # -Wno-unused-function: Headers provide static function declarations
 WARN_CFLAGS += -Wno-unused-function
-OPT_LDFLAGS ?= # -Wl,-gc-sections
+OPT_LDFLAGS ?= -Wl,-gc-sections
 CPPFLAGS = -I. -I$(PORT_PATH)
 CPPFLAGS += -I$(HAL_PATH) -I$(CORE_PATH)
 CPPFLAGS += -I$(SOURCE_PATH)/include
