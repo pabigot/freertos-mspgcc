@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-#include "clocks/ucs.h"
+#include <bsp430/clocks/ucs.h>
 #include <stdint.h>
 
 #ifndef configPORT_SMCLK_DIVIDING_SHIFT

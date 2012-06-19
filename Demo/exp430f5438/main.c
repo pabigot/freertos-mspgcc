@@ -37,9 +37,9 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "partest.h"
 #include "flash.h"
 #include "platform.h"
-#include "clocks/ucs.h"
-#include "timers/timerA0.h"
-#include <utility/console.h>
+#include <bsp430/clocks/ucs.h>
+#include <bsp430/timers/timerA0.h>
+#include <bsp430/utility/console.h>
 #include "queue.h"
 #include "serial.h"
 #include <stdio.h>

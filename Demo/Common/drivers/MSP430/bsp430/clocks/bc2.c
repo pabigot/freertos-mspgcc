@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-#include "clocks/bc2.h"
+#include <bsp430/clocks/bc2.h>
 
 unsigned char
 ucBSP430bc2Configure (unsigned char ucDCOCTL,

@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-#include "timers/timerA0.h"
+#include <bsp430/timers/timerA0.h>
 #include <stdint.h>
 
 volatile static isrHandler isr_handlers [

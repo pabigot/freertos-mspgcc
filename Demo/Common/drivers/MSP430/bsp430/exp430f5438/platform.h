@@ -1,0 +1,6 @@
+#ifndef BSP430_EXP430F5438_PLATFORM_H
+#define BSP430_EXP430F5438_PLATFORM_H
+
+#include <bsp430/common/platform.h>
+
+#endif /* BSP430_EXP430F5438_PLATFORM_H */

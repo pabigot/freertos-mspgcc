@@ -48,7 +48,7 @@ WARN_CFLAGS = -Wall -Wno-main
 OPT_LDFLAGS ?= # -Wl,-gc-sections
 
 CPPFLAGS = -I. -I$(BSP430_PATH) -I$(PORT_PATH)
-CPPFLAGS += -I$(BSP430_PATH) -I$(BSP430_PATH)/include
+CPPFLAGS += -I$(BSP430_PATH)/$(PLATFORM) -I$(BSP430_PATH)/include
 CPPFLAGS += -I$(SOURCE_PATH)/include
 CPPFLAGS += -I$(FREERTOS_ROOT)/Demo/Common/include
 

@@ -2,7 +2,7 @@
 #include "portSerial.h"
 #include "queue.h"
 #include "semphr.h"
-#include <clocks/ucs.h>
+#include <bsp430/clocks/ucs.h>
 #include <bsp430/5xx/periph.h>
 
 typedef bsp430_USCI xUSCI_A_UART;

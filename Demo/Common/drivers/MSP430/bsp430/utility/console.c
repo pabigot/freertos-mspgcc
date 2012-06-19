@@ -8,6 +8,7 @@
 
 #include "platform.h"
 #include "serial.h"
+#include <bsp430/utility/console.h>
 #include "semphr.h"
 #include "stdio.h"
 

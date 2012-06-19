@@ -36,7 +36,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "FreeRTOS.h"
 #include "partest.h"
-#include "utility/led.h"
+#include <bsp430/utility/led.h>
 
 void vParTestInitialise( void )
 {

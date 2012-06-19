@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-#include "clocks/fllplus.h"
+#include <bsp430/clocks/fllplus.h>
 
 unsigned char ucBSP430fllplusConfigure( const xFLLPLUSDefn * pxConfig )
 {

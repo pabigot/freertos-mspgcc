@@ -1,9 +1,9 @@
 #include "platform.h"
-#include "clocks/ucs.h"
-#include "timers/timerA0.h"
-#include "utility/led.h"
+#include <bsp430/clocks/ucs.h>
+#include <bsp430/timers/timerA0.h>
+#include <bsp430/utility/led.h>
+#include <bsp430/utility/console.h>
 #include "serial.h"
-#include <utility/console.h>
 #include "portSerial.h"
 
 const xLEDDefn pxLEDDefn[] = {
