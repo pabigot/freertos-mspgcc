@@ -4,12 +4,12 @@
 #include "semphr.h"
 #include <clocks/ucs.h>
 
-/* Register map for USCI_Ax peripheral in UART mode.  This
- * intentionally uses the GCC/ISO C11 extensions for unnamed
+/* Register map for (e)USCI_xy peripheral on a MSP430 5xx/6xx MCU.
+ * This intentionally uses the GCC/ISO C11 extensions for unnamed
  * struct/union fields. */
-typedef struct __attribute__((__packed__)) xUSCI_A_UART
+typedef struct __attribute__((__packed__)) bsp430_USCI
 {
-	union {
+	union { /* 0x00 */
 		unsigned int ctlw0;
 		struct {
 			unsigned char ctl1;
@@ -18,43 +18,56 @@ typedef struct __attribute__((__packed__)) xUSCI_A_UART
 	};
 	unsigned int _unused_0x02;
 	unsigned int _unused_0x04;
-	union {
+	union { /* 0x06 */
 		unsigned int brw;
 		struct {
 			unsigned char br0;
 			unsigned char br1;
 		};
 	};
-	unsigned char mctl;
-	unsigned char _reserved_0x09;
-	unsigned char stat;
+	union {			/* 0x08 */
+		struct { /* USCI_A */
+			unsigned char mctl;
+			unsigned char _reserved_0x09;
+		};
+		unsigned int _reserved_0x08;
+	};
+	unsigned char stat;			/* 0x0A */
 	unsigned char _reserved_0x0B;
-	unsigned char rxbuf;
+	unsigned char rxbuf;		/* 0x0C */
 	unsigned char _reserved_0x0D;
-	unsigned char txbuf;
+	unsigned char txbuf;		/* 0x0E */
 	unsigned char _reserved_0x0F;
-	unsigned char abctl;
-	unsigned char _reserved_0x11;
-	union {
-		unsigned int irctl;
+	union {						/* 0x10 */
+		struct {				/* USCI_A */
+			unsigned char abctl;
+			unsigned char _reserved_0x11;
+		};
+		unsigned int i2coa;		/* USCI_B */
+	};
+	union {						/* 0x12 */
+		unsigned int irctl;		/* USCI_A */
 		struct {
 			unsigned char irtctl;
 			unsigned char irrctl;
 		};
+		unsigned int i2csa;		/* USCI_B */
 	};
 	unsigned int _unused_0x14;
 	unsigned int _unused_0x16;
 	unsigned int _unused_0x18;
 	unsigned int _unused_0x1a;
-	union {
+	union {						/* 0x1C */
 		unsigned int ictl;
 		struct {
 			unsigned char ie;
 			unsigned char ifg;
 		};
 	};
-	unsigned int iv;
-} xUSCI_A_UART;
+	unsigned int iv;			/* 0x1E */
+} bsp430_USCI;
+
+typedef bsp430_USCI xUSCI_A_UART;
 
 #define COM_PORT_ACTIVE  0x01
 
