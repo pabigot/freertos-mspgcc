@@ -24,9 +24,7 @@ typedef struct xComPort {
 	 * the transmit queue to become non-empty.  Use this semaphore as
 	 * a hand-off. */
 	xSemaphoreHandle tx_idle_sema;
-	volatile unsigned char * pxsel;
-	unsigned char bit_tx;
-	unsigned char bit_rx;
+	int (* configurator) (int);
 	unsigned long num_rx;
 	unsigned long num_tx;
 } xComPort;
@@ -64,7 +62,7 @@ configurePort_ (xComPort* port,
 	}
 	
 	/* Reject if platform did not call portSerialAssignPins. */
-	if (! port->pxsel) {
+	if (! port->configurator) {
 		return NULL;
 	}
 
@@ -105,7 +103,7 @@ configurePort_ (xComPort* port,
 	port->uca->brw = br;
 	port->uca->mctl = (0 * UCBRF_1) | (brs * UCBRS_1);
 
-	*(port->pxsel) |= port->bit_tx | port->bit_rx;
+	port->configurator(1);
 
 	/* Mark the port active */
 	port->num_rx = port->num_tx = 0;
@@ -125,7 +123,7 @@ static void
 unconfigurePort_ (xComPort* port)
 {
 	port->uca->ctlw0 = UCSWRST;
-	*(port->pxsel) &= ~(port->bit_tx | port->bit_rx);
+	port->configurator(0);
 	if (0 != port->rx_queue) {
 		vQueueDelete(port->rx_queue);
 		port->rx_queue = 0;
@@ -139,18 +137,14 @@ unconfigurePort_ (xComPort* port)
 
 signed portBASE_TYPE
 portSerialAssignPins (eCOMPort ePort,
-					  volatile unsigned char * pcPxSEL,
-					  unsigned char ucBitTX,
-					  unsigned char ucBitRX)
+					  int (* configurator) (int))
 {
 	xComPort* port;
 	if (ePort >= prvCOMPortInvalid) {
 		return pdFAIL;
 	}
 	port = prvComPorts + (unsigned int)ePort;
-	port->pxsel = pcPxSEL;
-	port->bit_tx = ucBitTX;
-	port->bit_rx = ucBitRX;
+	port->configurator = configurator;
 	return pdPASS;
 }
 

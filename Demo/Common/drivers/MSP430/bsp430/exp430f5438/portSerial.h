@@ -38,8 +38,6 @@
  * be used. */
 signed portBASE_TYPE
 portSerialAssignPins (eCOMPort ePort,
-					  volatile unsigned char * pcPxSEL,
-					  unsigned char ucBitTX,
-					  unsigned char ucBitRX);
+					  int (* configurator) (int));
 
 #endif /* FREERTOS_MSPGCC_BSP430_PORTSERIAL_H */
