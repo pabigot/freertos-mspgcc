@@ -16,25 +16,32 @@ configurePort_ (xComPort* port,
 				unsigned long baud,
 				size_t bufsiz)
 {
+	xQueueHandle rx_queue = NULL;
+	xQueueHandle tx_queue = NULL;
 	unsigned long brclk_hz;
 	uint16_t br;
 	uint16_t brs;
 
-	/* Reject invalid baud rates */
-	if ((0 == baud) || (1000000UL < baud)) {
-		return NULL;
-	}
-	
 	/* Reject if requested queue could not be allocated */
 	if (0 < bufsiz) {
-		port->rx_queue = xQueueCreate(bufsiz, sizeof(uint8_t));
-		if (NULL == port->rx_queue) {
+		rx_queue = xQueueCreate(bufsiz, sizeof(uint8_t));
+		if (NULL == rx_queue) {
 			goto failed;
 		}
-		port->tx_queue = xQueueCreate(bufsiz, sizeof(uint8_t));
-		if (NULL == port->tx_queue) {
+		tx_queue = xQueueCreate(bufsiz, sizeof(uint8_t));
+		if (NULL == tx_queue) {
 			goto failed;
 		}
+	}
+
+	/* Reject invalid baud rates */
+	if ((0 == baud) || (1000000UL < baud)) {
+		goto failed;
+	}
+
+	port->rx_queue = rx_queue;
+	port->tx_queue = tx_queue;
+	if (NULL != tx_queue) {
 		vSemaphoreCreateBinary(port->tx_idle_sema);
 		if (NULL == port->tx_idle_sema) {
 			goto failed;
@@ -75,12 +82,12 @@ configurePort_ (xComPort* port,
 		vSemaphoreDelete(port->tx_idle_sema);
 		port->tx_idle_sema = 0;
 	}
-	if (NULL != port->tx_queue) {
-		vQueueDelete(port->tx_queue);
+	if (NULL != tx_queue) {
+		vQueueDelete(tx_queue);
 		port->tx_queue = 0;
 	}
-	if (NULL != port->rx_queue) {
-		vQueueDelete(port->rx_queue);
+	if (NULL != rx_queue) {
+		vQueueDelete(rx_queue);
 		port->rx_queue = 0;
 	}
 	return NULL;
