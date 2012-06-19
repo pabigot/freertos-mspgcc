@@ -30,6 +30,7 @@ enum {
 };
 
 #define DEVID_TO_USCI(_devid) ((volatile bsp430_USCI *)(_devid))
+#define DEVICE_TO_DEVID(_device) ((int)((_device)->usci))
 
 bsp430_FreeRTOS_USCI usci_devices[] = {
 #if defined(__MSP430_HAS_USCI_A0__)
@@ -92,6 +93,7 @@ bsp430_usci_uart_configure (int devid,
 		return NULL;
 	}
 
+	/* Reject non-existent devices */
 	device = bsp430_usci_lookup(devid);
 	if (! device) {
 		return NULL;
@@ -121,7 +123,7 @@ bsp430_usci_uart_configure (int devid,
 	device->usci->brw = br;
 	device->usci->mctl = (0 * UCBRF_1) | (brs * UCBRS_1);
 
-	vBSP430platformConfigurePeripheralPins ((int)(device->usci), 1);
+	vBSP430platformConfigurePeripheralPins (DEVICE_TO_DEVID(device), 1);
 
 	/* Mark the device active */
 	device->num_rx = device->num_tx = 0;
@@ -136,7 +138,7 @@ bsp430_usci_uart_configure (int devid,
 
 	return device;
  failed:
-	bsp430_usci_close(device);
+	(void)bsp430_usci_close(device);
 	return NULL;
 }
 
@@ -144,7 +146,7 @@ int
 bsp430_usci_close (bsp430_FreeRTOS_USCI* device)
 {
 	device->usci->ctlw0 = UCSWRST;
-	vBSP430platformConfigurePeripheralPins ((int)(device->usci), 0);
+	vBSP430platformConfigurePeripheralPins (DEVICE_TO_DEVID(device), 0);
 	if (NULL != device->tx_idle_sema) {
 		vSemaphoreDelete(device->tx_idle_sema);
 		device->tx_idle_sema = 0;
