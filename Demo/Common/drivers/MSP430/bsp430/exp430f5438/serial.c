@@ -16,11 +16,9 @@ configurePort_ (xComPort* port,
 				unsigned long baud,
 				size_t bufsiz)
 {
+	xComPort* configured_port = NULL;
 	xQueueHandle rx_queue = NULL;
 	xQueueHandle tx_queue = NULL;
-	unsigned long brclk_hz;
-	uint16_t br;
-	uint16_t brs;
 
 	/* Reject if requested queue could not be allocated */
 	if (0 < bufsiz) {
@@ -34,61 +32,19 @@ configurePort_ (xComPort* port,
 		}
 	}
 
-	/* Reject invalid baud rates */
-	if ((0 == baud) || (1000000UL < baud)) {
-		goto failed;
+	configured_port = bsp430_usci_uart_configure((int)(port->usci), 0, baud,
+												 rx_queue, tx_queue);
+
+	if (NULL != configured_port) {
+		return configured_port;
 	}
 
-	port->rx_queue = rx_queue;
-	port->tx_queue = tx_queue;
-	if (NULL != tx_queue) {
-		vSemaphoreCreateBinary(port->tx_idle_sema);
-		if (NULL == port->tx_idle_sema) {
-			goto failed;
-		}
-	}
-
-	/* Prefer ACLK for rates that are low enough.  Use SMCLK for
-	 * anything larger. */
-	if (portACLK_FREQUENCY_HZ >= (3 * baud)) {
-		port->usci->ctlw0 = UCSWRST | UCSSEL__ACLK;
-		brclk_hz = portACLK_FREQUENCY_HZ;
-	} else {
-		port->usci->ctlw0 = UCSWRST | UCSSEL__SMCLK;
-		brclk_hz = ulBSP430ucsSMCLK_Hz();
-	}
-	br = (brclk_hz / baud);
-	brs = (1 + 16 * (brclk_hz - baud * br) / baud) / 2;
-
-	port->usci->brw = br;
-	port->usci->mctl = (0 * UCBRF_1) | (brs * UCBRS_1);
-
-	vBSP430platformConfigurePeripheralPins ((int)(port->usci), 1);
-
-	/* Mark the port active */
-	port->num_rx = port->num_tx = 0;
-	port->flags |= COM_PORT_ACTIVE;
-
-	/* Release the USCI and enable the interrupts.  Interrupts are
-	 * cleared when UCSWRST is set. */
-	port->usci->ctlw0 &= ~UCSWRST;
-	if (0 != port->rx_queue) {
-		port->usci->ie |= UCRXIE;
-	}
-
-	return port;
  failed:
-	if (NULL != port->tx_idle_sema) {
-		vSemaphoreDelete(port->tx_idle_sema);
-		port->tx_idle_sema = 0;
-	}
 	if (NULL != tx_queue) {
 		vQueueDelete(tx_queue);
-		port->tx_queue = 0;
 	}
 	if (NULL != rx_queue) {
 		vQueueDelete(rx_queue);
-		port->rx_queue = 0;
 	}
 	return NULL;
 }

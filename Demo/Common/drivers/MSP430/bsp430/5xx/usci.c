@@ -58,6 +58,8 @@ bsp430_FreeRTOS_USCI usci_devices[] = {
 };
 const bsp430_FreeRTOS_USCI* const end_usci_devices = usci_devices + sizeof(usci_devices)/sizeof(*usci_devices);
 
+#define COM_PORT_ACTIVE  0x01
+
 bsp430_FreeRTOS_USCI*
 bsp430_usci_lookup (int devid)
 {
@@ -72,8 +74,6 @@ bsp430_usci_lookup (int devid)
 	return NULL;
 }
 
-#if 0
-
 bsp430_FreeRTOS_USCI*
 bsp430_usci_uart_configure (int devid,
 							unsigned int control_word,
@@ -81,45 +81,37 @@ bsp430_usci_uart_configure (int devid,
 							xQueueHandle rx_queue,
 							xQueueHandle tx_queue)
 {
+	bsp430_FreeRTOS_USCI* device;
 	unsigned long brclk_hz;
 	uint16_t br;
 	uint16_t brs;
-	bsp430_FreeRTOS_USCI* device;
 
 	/* Reject invalid baud rates */
 	if ((0 == baud) || (1000000UL < baud)) {
 		return NULL;
 	}
 
-	device = find_device(devnum);
-	if (NULL == device) {
-		return device;
-	}
-
-	if (0 != device->configurator && 0 != device->configurator(1)) {
+	device = bsp430_usci_lookup(devid);
+	if (! device) {
 		return NULL;
-	}
-
-	/* Reject if in use */
-	if (NULL != device->tx_idle_sema) {
-		goto failed;
-	}
-	vSemaphoreCreateBinary(device->tx_idle_sema);
-	if (NULL != device->tx_idle_sema) {
-		goto failed;
 	}
 
 	device->rx_queue = rx_queue;
 	device->tx_queue = tx_queue;
+	if (NULL != tx_queue) {
+		vSemaphoreCreateBinary(device->tx_idle_sema);
+		if (NULL == device->tx_idle_sema) {
+			goto failed;
+		}
+	}
 
 	/* Prefer ACLK for rates that are low enough.  Use SMCLK for
 	 * anything larger. */
-	control_word &= ~((UCSYNC << 8) | (UCSSEL0 | UCSSEL1));
 	if (portACLK_FREQUENCY_HZ >= (3 * baud)) {
-		device->usci->ctlw0 = UCSWRST | UCSSEL__ACLK | control_word;
+		device->usci->ctlw0 = UCSWRST | UCSSEL__ACLK;
 		brclk_hz = portACLK_FREQUENCY_HZ;
 	} else {
-		device->usci->ctlw0 = UCSWRST | UCSSEL__SMCLK | control_word;
+		device->usci->ctlw0 = UCSWRST | UCSSEL__SMCLK;
 		brclk_hz = ulBSP430ucsSMCLK_Hz();
 	}
 	br = (brclk_hz / baud);
@@ -127,9 +119,12 @@ bsp430_usci_uart_configure (int devid,
 
 	device->usci->brw = br;
 	device->usci->mctl = (0 * UCBRF_1) | (brs * UCBRS_1);
-	
+
+	vBSP430platformConfigurePeripheralPins ((int)(device->usci), 1);
+
 	/* Mark the device active */
 	device->num_rx = device->num_tx = 0;
+	device->flags |= COM_PORT_ACTIVE;
 
 	/* Release the USCI and enable the interrupts.  Interrupts are
 	 * cleared when UCSWRST is set. */
@@ -137,19 +132,17 @@ bsp430_usci_uart_configure (int devid,
 	if (0 != device->rx_queue) {
 		device->usci->ie |= UCRXIE;
 	}
+
 	return device;
  failed:
 	if (NULL != device->tx_idle_sema) {
 		vSemaphoreDelete(device->tx_idle_sema);
-		device->tx_idle_sema = NULL;
+		device->tx_idle_sema = 0;
 	}
-	if (0 != device->configurator) {
-		(void)device->configurator(0);
-	}
+	device->tx_queue = 0;
+	device->rx_queue = 0;
 	return NULL;
 }
-
-#endif
 
 
 /* Since the interrupt code is the same for all peripherals, on MCUs
