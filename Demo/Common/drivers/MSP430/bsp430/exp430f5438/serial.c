@@ -3,44 +3,26 @@
 #include "queue.h"
 #include "semphr.h"
 #include <bsp430/clocks/ucs.h>
-#include <bsp430/5xx/periph.h>
+#include <bsp430/5xx/usci.h>
 
 typedef bsp430_USCI xUSCI_A_UART;
 
 #define COM_PORT_ACTIVE  0x01
 
-typedef struct xComPort {
-	unsigned int flags;
-	volatile xUSCI_A_UART * const uca;
-	xQueueHandle rx_queue;
-	xQueueHandle tx_queue;
-
-	/* Semaphore to control enable of TX interrupts.  For efficient
-	 * interrupt-driven transmission, we rely on receipt of TXIFG to
-	 * indicate another character can be transmitted.  If there are no
-	 * more characters this notification is lost.  When a new
-	 * character arrives, we can't just set TXIFG to wake the ISR,
-	 * because we can't tell whether the character we queued caused
-	 * the transmit queue to become non-empty.  Use this semaphore as
-	 * a hand-off. */
-	xSemaphoreHandle tx_idle_sema;
-	int (* configurator) (int);
-	unsigned long num_rx;
-	unsigned long num_tx;
-} xComPort;
+typedef bsp430_FreeRTOS_USCI xComPort;
 
 static xComPort prvComPorts[] = {
 #if defined(__MSP430_HAS_USCI_A0__)
-	{ .uca = (volatile xUSCI_A_UART *)__MSP430_BASEADDRESS_USCI_A0__ },
+	{ .usci = (volatile xUSCI_A_UART *)__MSP430_BASEADDRESS_USCI_A0__ },
 #endif /* __MSP430_HAS_USCI_A0__ */
 #if defined(__MSP430_HAS_USCI_A1__)
-	{ .uca = (volatile xUSCI_A_UART *)__MSP430_BASEADDRESS_USCI_A1__ },
+	{ .usci = (volatile xUSCI_A_UART *)__MSP430_BASEADDRESS_USCI_A1__ },
 #endif /* __MSP430_HAS_USCI_A1__ */
 #if defined(__MSP430_HAS_USCI_A2__)
-	{ .uca = (volatile xUSCI_A_UART *)__MSP430_BASEADDRESS_USCI_A2__ },
+	{ .usci = (volatile xUSCI_A_UART *)__MSP430_BASEADDRESS_USCI_A2__ },
 #endif /* __MSP430_HAS_USCI_A2__ */
 #if defined(__MSP430_HAS_USCI_A3__)
-	{ .uca = (volatile xUSCI_A_UART *)__MSP430_BASEADDRESS_USCI_A3__ },
+	{ .usci = (volatile xUSCI_A_UART *)__MSP430_BASEADDRESS_USCI_A3__ },
 #endif /* __MSP430_HAS_USCI_A3__ */
 };
 
@@ -91,17 +73,17 @@ configurePort_ (xComPort* port,
 	/* Prefer ACLK for rates that are low enough.  Use SMCLK for
 	 * anything larger. */
 	if (portACLK_FREQUENCY_HZ >= (3 * baud)) {
-		port->uca->ctlw0 = UCSWRST | UCSSEL__ACLK;
+		port->usci->ctlw0 = UCSWRST | UCSSEL__ACLK;
 		brclk_hz = portACLK_FREQUENCY_HZ;
 	} else {
-		port->uca->ctlw0 = UCSWRST | UCSSEL__SMCLK;
+		port->usci->ctlw0 = UCSWRST | UCSSEL__SMCLK;
 		brclk_hz = ulBSP430ucsSMCLK_Hz();
 	}
 	br = (brclk_hz / baud);
 	brs = (1 + 16 * (brclk_hz - baud * br) / baud) / 2;
 
-	port->uca->brw = br;
-	port->uca->mctl = (0 * UCBRF_1) | (brs * UCBRS_1);
+	port->usci->brw = br;
+	port->usci->mctl = (0 * UCBRF_1) | (brs * UCBRS_1);
 
 	port->configurator(1);
 
@@ -111,9 +93,9 @@ configurePort_ (xComPort* port,
 
 	/* Release the USCI and enable the interrupts.  Interrupts are
 	 * cleared when UCSWRST is set. */
-	port->uca->ctlw0 &= ~UCSWRST;
+	port->usci->ctlw0 &= ~UCSWRST;
 	if (0 != port->rx_queue) {
-		port->uca->ie |= UCRXIE;
+		port->usci->ie |= UCRXIE;
 	}
 
 	return port;
@@ -122,7 +104,7 @@ configurePort_ (xComPort* port,
 static void
 unconfigurePort_ (xComPort* port)
 {
-	port->uca->ctlw0 = UCSWRST;
+	port->usci->ctlw0 = UCSWRST;
 	port->configurator(0);
 	if (0 != port->rx_queue) {
 		vQueueDelete(port->rx_queue);
@@ -241,17 +223,17 @@ xSerialPutChar (xComPortHandle pxPort, signed char cOutChar, portTickType xBlock
 	}
 	if (0 == port->tx_queue) {
 		/* Spin until tx buffer ready */
-		while (!(port->uca->ifg & UCTXIFG)) {
+		while (!(port->usci->ifg & UCTXIFG)) {
 			;
 		}
 		/* Transmit the character */
-		port->uca->txbuf = cOutChar;
+		port->usci->txbuf = cOutChar;
 		return pdPASS;
 	}
 	rv = xQueueSendToBack(port->tx_queue, &cOutChar, xBlockTime);
 	if (pdTRUE == rv && xSemaphoreTake(port->tx_idle_sema, 0)) {
-		port->uca->ifg |= UCTXIFG;
-		port->uca->ie |= UCTXIE;
+		port->usci->ifg |= UCTXIFG;
+		port->usci->ie |= UCTXIE;
 	}
 	return pdTRUE == rv;
 }
@@ -284,30 +266,6 @@ vSerialClose (xComPortHandle xPort)
 	}
 }
 
-#if 0
-void
-checkValues ()
-{
-	volatile xUSCI_A_UART* uca1 = (volatile xUSCI_A_UART*) __MSP430_BASEADDRESS_USCI_A1__;
-#define CHECK_VAL(_s,_v) printf("Register " #_s " at %p, field at %p\n", &_s, &(uca1->_v))
-
-	printf("uca1 at %p\n", uca1);
-	CHECK_VAL(UCA1CTLW0, ctlw0);
-	CHECK_VAL(UCA1CTL0, ctl0);
-	CHECK_VAL(UCA1CTL1, ctl1);
-	CHECK_VAL(UCA1BRW, brw);
-	CHECK_VAL(UCA1BR0, br0);
-	CHECK_VAL(UCA1BR1, br1);
-	CHECK_VAL(UCA1IRCTL, irctl);
-	CHECK_VAL(UCA1IRTCTL, irtctl);
-	CHECK_VAL(UCA1IRRCTL, irrctl);
-	CHECK_VAL(UCA1ICTL, ictl);
-	CHECK_VAL(UCA1IE, ie);
-	CHECK_VAL(UCA1IFG, ifg);
-	CHECK_VAL(UCA1IV, iv);
-}
-#endif
-
 /* Since the interrupt code is the same for all peripherals, on MCUs
  * with multiple USCI devices it is more space efficient to share it.
  * This does add an extra call/return for some minor cost in stack
@@ -334,7 +292,7 @@ usci_irq (xComPort* port)
 	portBASE_TYPE rv = pdFALSE;
 	uint8_t c;
 
-	switch (port->uca->iv) {
+	switch (port->usci->iv) {
 	default:
 	case USCI_NONE:
 		break;
@@ -342,17 +300,17 @@ usci_irq (xComPort* port)
 		rv = xQueueReceiveFromISR(port->tx_queue, &c, &yield);
 		if (0 == uxQueueMessagesWaiting(port->tx_queue)) {
 			signed portBASE_TYPE sema_yield = pdFALSE;
-			port->uca->ie &= ~UCTXIE;
+			port->usci->ie &= ~UCTXIE;
 			xSemaphoreGiveFromISR(port->tx_idle_sema, &sema_yield);
 			yield |= sema_yield;
 		}
 		if (rv) {
 			++port->num_tx;
-			port->uca->txbuf = c;
+			port->usci->txbuf = c;
 		}
 		break;
 	case USCI_UCRXIFG:
-		c = port->uca->rxbuf;
+		c = port->usci->rxbuf;
 		++port->num_rx;
 		rv = xQueueSendToFrontFromISR(port->rx_queue, &c, &yield);
 		break;

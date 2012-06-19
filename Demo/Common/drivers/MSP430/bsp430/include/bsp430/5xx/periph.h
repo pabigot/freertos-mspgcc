@@ -67,6 +67,38 @@ typedef struct bsp430_USCI
 	unsigned int iv;			/* 0x1E */
 } bsp430_USCI;
 
+/* Use base addresses as the device identifier.  If an application
+ * references a device that does not exist on the target MCU, the
+ * error may be a little confusing, but at least it won't compile.  We
+ * could use an int for this, but then it might be a different size
+ * than the pointer. */
+typedef void * bsp430_devid_t;
+
+#if defined(__MSP430_HAS_USCI_A0__)
+#define BSP430_USCI_A0 ((bsp430_devid_t)(__MSP430_BASEADDRESS_USCI_A0__))
+#endif /* __MSP430_HAS_USCI_A0__ */
+#if defined(__MSP430_HAS_USCI_A1__)
+#define BSP430_USCI_A1 ((bsp430_devid_t)(__MSP430_BASEADDRESS_USCI_A1__))
+#endif /* __MSP430_HAS_USCI_A1__ */
+#if defined(__MSP430_HAS_USCI_A2__)
+#define BSP430_USCI_A2 ((bsp430_devid_t)(__MSP430_BASEADDRESS_USCI_A2__))
+#endif /* __MSP430_HAS_USCI_A2__ */
+#if defined(__MSP430_HAS_USCI_A3__)
+#define BSP430_USCI_A3 ((bsp430_devid_t)(__MSP430_BASEADDRESS_USCI_A3__))
+#endif /* __MSP430_HAS_USCI_A3__ */
+#if defined(__MSP430_HAS_USCI_B0__)
+#define BSP430_USCI_B0 ((bsp430_devid_t)(__MSP430_BASEADDRESS_USCI_B0__))
+#endif /* __MSP430_HAS_USCI_B0__ */
+#if defined(__MSP430_HAS_USCI_B1__)
+#define BSP430_USCI_B1 ((bsp430_devid_t)(__MSP430_BASEADDRESS_USCI_B1__))
+#endif /* __MSP430_HAS_USCI_B1__ */
+#if defined(__MSP430_HAS_USCI_B2__)
+#define BSP430_USCI_B2 ((bsp430_devid_t)(__MSP430_BASEADDRESS_USCI_B2__))
+#endif /* __MSP430_HAS_USCI_B2__ */
+#if defined(__MSP430_HAS_USCI_B3__)
+#define BSP430_USCI_B3 ((bsp430_devid_t)(__MSP430_BASEADDRESS_USCI_B3__))
+#endif /* __MSP430_HAS_USCI_B3__ */
+
 /* Structure for a single DMA channel */
 typedef struct bsp430_DMAX_channel {
 	unsigned int ctl;			/* 0x00 */
