@@ -37,6 +37,7 @@ xConsoleConfigure (xComPortHandle xConsole,
 		vSemaphoreDelete(prvConsoleSemaphore);
 		prvConsoleSemaphore = 0;
 	}
+	prvConsole = 0;
 	if (xConsole) {
 		vSemaphoreCreateBinary(prvConsoleSemaphore);
 		if (! prvConsoleSemaphore) {
