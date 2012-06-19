@@ -163,9 +163,8 @@ xSerialPutChar (xComPortHandle pxPort, signed char cOutChar, portTickType xBlock
 		return pdPASS;
 	}
 	rv = xQueueSendToBack(port->tx_queue, &cOutChar, xBlockTime);
-	if (pdTRUE == rv && xSemaphoreTake(port->tx_idle_sema, 0)) {
-		port->usci->ifg |= UCTXIFG;
-		port->usci->ie |= UCTXIE;
+	if (pdTRUE == rv) {
+		(void)bsp430_usci_wakeup_transmit(port);
 	}
 	return pdTRUE == rv;
 }

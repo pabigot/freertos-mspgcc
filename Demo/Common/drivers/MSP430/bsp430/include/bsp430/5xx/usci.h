@@ -87,6 +87,36 @@ bsp430_usci_spi_open (int devid,
 					  xQueueHandle rx_queue,
 					  xQueueHandle tx_queue);
 
+/** Release a USCI device.
+ *
+ * This places the device into reset mode, reset the peripheral pins
+ * to port function, and releases any resources allocated when the
+ * device was opened.
+ *
+ * @param device The device to be closed.
+ *
+ * @return 0 if the close occurred without error. */
 int bsp430_usci_close (bsp430_FreeRTOS_USCI* device);
+
+/** Wake up the interrupt-driven transmission if necessary.
+ *
+ * Normally the transmission infrastructure transmits data that is
+ * added to the queue.  However, the infrastructure is disabled when
+ * the transmit queue is emptied.  When this has happened, it must be
+ * told that more data has been added and the infrastructure
+ * re-enabled.
+ *
+ * For efficiency, this should only be called if it is believed that
+ * data is present in the transmit queue but that the transmission
+ * infrastructure may be idle.
+ *
+ * @param device A USCI device which must have a transmit queue.
+ *
+ * @return A positive value reflecting a minimum number of bytes that
+ * were in the transmit queue at the time it was woken.  Zero if the
+ * transmit queue was active.  A negative value if the transmit
+ * infrastructure was idle and there was no data queued (this being a
+ * improper invocation of the routine). */
+int bsp430_usci_wakeup_transmit (bsp430_FreeRTOS_USCI* device);
 
 #endif /* BSP430_5XX_USCI_H */

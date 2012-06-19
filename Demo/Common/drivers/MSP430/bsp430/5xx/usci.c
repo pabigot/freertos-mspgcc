@@ -157,6 +157,23 @@ bsp430_usci_close (bsp430_FreeRTOS_USCI* device)
 	return 0;
 }
 
+int
+bsp430_usci_wakeup_transmit (bsp430_FreeRTOS_USCI* device)
+{
+	int rv = 0;
+	if (xSemaphoreTake(device->tx_idle_sema, 0)) {
+		rv = uxQueueMessagesWaiting(device->tx_queue);
+		if (0 < rv) {
+			device->usci->ifg |= UCTXIFG;
+			device->usci->ie |= UCTXIE;
+		} else {
+			rv = -1;
+			xSemaphoreGive(device->tx_idle_sema);
+		}
+	}
+	return rv;
+}
+
 /* Since the interrupt code is the same for all peripherals, on MCUs
  * with multiple USCI devices it is more space efficient to share it.
  * This does add an extra call/return for some minor cost in stack
