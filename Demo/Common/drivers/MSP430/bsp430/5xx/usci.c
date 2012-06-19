@@ -77,11 +77,11 @@ bsp430_usci_lookup (int devid)
 }
 
 bsp430_FreeRTOS_USCI*
-bsp430_usci_uart_configure (int devid,
-							unsigned int control_word,
-							unsigned long baud,
-							xQueueHandle rx_queue,
-							xQueueHandle tx_queue)
+bsp430_usci_uart_open (int devid,
+					   unsigned int control_word,
+					   unsigned long baud,
+					   xQueueHandle rx_queue,
+					   xQueueHandle tx_queue)
 {
 	bsp430_FreeRTOS_USCI* device;
 	unsigned long brclk_hz;

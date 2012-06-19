@@ -32,8 +32,8 @@ configurePort_ (xComPort* port,
 		}
 	}
 
-	configured_port = bsp430_usci_uart_configure((int)(port->usci), 0, baud,
-												 rx_queue, tx_queue);
+	configured_port = bsp430_usci_uart_open((int)(port->usci), 0, baud,
+											rx_queue, tx_queue);
 
 	if (NULL != configured_port) {
 		return configured_port;
@@ -67,7 +67,6 @@ static xComPort*
 portToDevice (eCOMPort ePort)
 {
 	int devid;
-	xComPort* port;
 
 	switch (ePort) {
 	case serCOM1: devid = BSP430_USCI_A0; break;
@@ -154,12 +153,7 @@ xSerialPutChar (xComPortHandle pxPort, signed char cOutChar, portTickType xBlock
 		return pdFAIL;
 	}
 	if (0 == port->tx_queue) {
-		/* Spin until tx buffer ready */
-		while (!(port->usci->ifg & UCTXIFG)) {
-			;
-		}
-		/* Transmit the character */
-		port->usci->txbuf = cOutChar;
+		(void)bsp430_usci_raw_transmit(port, cOutChar);
 		return pdPASS;
 	}
 	rv = xQueueSendToBack(port->tx_queue, &cOutChar, xBlockTime);

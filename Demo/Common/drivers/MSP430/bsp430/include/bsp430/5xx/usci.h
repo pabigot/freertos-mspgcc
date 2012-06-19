@@ -119,4 +119,27 @@ int bsp430_usci_close (bsp430_FreeRTOS_USCI* device);
  * improper invocation of the routine). */
 int bsp430_usci_wakeup_transmit (bsp430_FreeRTOS_USCI* device);
 
+/** Transmit a single character on a queued USCI device.
+ *
+ * @param device The device on which the character should be
+ * transmitted.  It is an error to use this function if the device has
+ * a transmit queue; in such a case this call is likely to hang.
+ *
+ * @param c the character to be written
+ *
+ * @return @C c. */
+static int
+__inline__
+bsp430_usci_raw_transmit (bsp430_FreeRTOS_USCI* device,
+						  int c)
+{
+	/* Spin until the transmit buffer is available */
+	while (! (device->usci->ifg & UCTXIFG)) {
+		;
+	}
+	/* Queue the octet for transmission */
+	device->usci->txbuf = c;
+	return c;
+}
+
 #endif /* BSP430_5XX_USCI_H */
