@@ -315,7 +315,7 @@ portBASE_TYPE xPortStartScheduler( void )
 	   configMSP430_APP_CONTROLS_TA0 is not set the timer will be
 	   configured at this point. */
 
-#if ( configMSP430_APP_CONTROLS_TA0 != 1 )
+#if configMSP430_APP_CONTROLS_TA0 - 0 == 0
 
 	/* Ensure the timer is stopped before configuring. */
 	TACTL = 0;
