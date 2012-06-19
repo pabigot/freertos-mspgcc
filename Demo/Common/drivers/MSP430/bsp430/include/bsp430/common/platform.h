@@ -36,9 +36,10 @@ POSSIBILITY OF SUCH DAMAGE.
  *
  */
 
-#ifndef _BSP430_PLATFORM_H_
-#define _BSP430_PLATFORM_H_
+#ifndef BSP430_COMMON_PLATFORM_H
+#define BSP430_COMMON_PLATFORM_H
 
+#include <msp430.h>
 #include "FreeRTOS.h"
 
 /** Basic configuration for the platform.
@@ -52,4 +53,4 @@ POSSIBILITY OF SUCH DAMAGE.
  */
 void vBSP430platformSetup ();
 
-#endif /* _BSP430_PLATFORM_H_ */
+#endif /* BSP430_COMMON_PLATFORM_H */

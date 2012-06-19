@@ -50,7 +50,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #ifndef _BSP430_TIMERA0_H_
 #define _BSP430_TIMERA0_H_
 
-#include "FreeRTOS.h"
+#include "platform.h"
 
 typedef void (* isrHandler) ();
 

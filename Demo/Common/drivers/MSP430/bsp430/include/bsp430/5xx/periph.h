@@ -4,6 +4,8 @@
 #ifndef BSP430_5XX_PERIPH_H
 #define BSP430_5XX_PERIPH_H
 
+#include <msp430.h>
+
 /* Register map for (e)USCI_xy peripheral on a MSP430 5xx/6xx MCU. */
 typedef struct bsp430_USCI
 {
