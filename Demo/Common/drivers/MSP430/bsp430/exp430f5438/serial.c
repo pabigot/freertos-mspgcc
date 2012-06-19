@@ -29,21 +29,15 @@ configurePort_ (xComPort* port,
 	if (0 < bufsiz) {
 		port->rx_queue = xQueueCreate(bufsiz, sizeof(uint8_t));
 		if (NULL == port->rx_queue) {
-			return NULL;
+			goto failed;
 		}
 		port->tx_queue = xQueueCreate(bufsiz, sizeof(uint8_t));
 		if (NULL == port->tx_queue) {
-			vQueueDelete(port->rx_queue);
-			port->rx_queue = 0;
-			return NULL;
+			goto failed;
 		}
 		vSemaphoreCreateBinary(port->tx_idle_sema);
 		if (NULL == port->tx_idle_sema) {
-			vQueueDelete(port->tx_queue);
-			port->tx_queue = 0;
-			vQueueDelete(port->rx_queue);
-			port->rx_queue = 0;
-			return NULL;
+			goto failed;
 		}
 	}
 
@@ -76,6 +70,20 @@ configurePort_ (xComPort* port,
 	}
 
 	return port;
+ failed:
+	if (NULL != port->tx_idle_sema) {
+		vSemaphoreDelete(port->tx_idle_sema);
+		port->tx_idle_sema = 0;
+	}
+	if (NULL != port->tx_queue) {
+		vQueueDelete(port->tx_queue);
+		port->tx_queue = 0;
+	}
+	if (NULL != port->rx_queue) {
+		vQueueDelete(port->rx_queue);
+		port->rx_queue = 0;
+	}
+	return NULL;
 }
 
 static void
