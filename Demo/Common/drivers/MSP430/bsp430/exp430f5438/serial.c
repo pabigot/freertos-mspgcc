@@ -11,24 +11,6 @@ typedef bsp430_USCI xUSCI_A_UART;
 
 typedef bsp430_FreeRTOS_USCI xComPort;
 
-static xComPort prvComPorts[] = {
-#if defined(__MSP430_HAS_USCI_A0__)
-	{ .usci = (volatile xUSCI_A_UART *)__MSP430_BASEADDRESS_USCI_A0__ },
-#endif /* __MSP430_HAS_USCI_A0__ */
-#if defined(__MSP430_HAS_USCI_A1__)
-	{ .usci = (volatile xUSCI_A_UART *)__MSP430_BASEADDRESS_USCI_A1__ },
-#endif /* __MSP430_HAS_USCI_A1__ */
-#if defined(__MSP430_HAS_USCI_A2__)
-	{ .usci = (volatile xUSCI_A_UART *)__MSP430_BASEADDRESS_USCI_A2__ },
-#endif /* __MSP430_HAS_USCI_A2__ */
-#if defined(__MSP430_HAS_USCI_A3__)
-	{ .usci = (volatile xUSCI_A_UART *)__MSP430_BASEADDRESS_USCI_A3__ },
-#endif /* __MSP430_HAS_USCI_A3__ */
-};
-
-static const eCOMPort prvCOMPortInvalid = (eCOMPort)(sizeof(prvComPorts)/sizeof(*prvComPorts));
-static const xComPort * const prvComPorts_end = prvComPorts + sizeof(prvComPorts)/sizeof(*prvComPorts);
-
 static xComPort*
 configurePort_ (xComPort* port,
 				unsigned long baud,
@@ -117,15 +99,34 @@ unconfigurePort_ (xComPort* port)
 	port->flags = 0;
 }
 
+static xComPort*
+portToDevice (eCOMPort ePort)
+{
+	bsp430_devid_t devid;
+	xComPort* port;
+
+	switch (ePort) {
+	case serCOM1: devid = BSP430_USCI_A0; break;
+	case serCOM2: devid = BSP430_USCI_A1; break;
+	case serCOM3: devid = BSP430_USCI_A2; break;
+	case serCOM4: devid = BSP430_USCI_A3; break;
+	default:
+		devid = 0;
+		break;
+	}
+	return bsp430_usci_lookup(devid);
+}
+
+
 signed portBASE_TYPE
 portSerialAssignPins (eCOMPort ePort,
 					  int (* configurator) (int))
 {
-	xComPort* port;
-	if (ePort >= prvCOMPortInvalid) {
+	xComPort* port = portToDevice(ePort);
+
+	if (! port) {
 		return pdFAIL;
 	}
-	port = prvComPorts + (unsigned int)ePort;
 	port->configurator = configurator;
 	return pdPASS;
 }
@@ -133,14 +134,15 @@ portSerialAssignPins (eCOMPort ePort,
 xComPortHandle
 xSerialPortInitMinimal (unsigned long ulWantedBaud, unsigned portBASE_TYPE uxQueueLength)
 {
-	xComPort *port;
-
+	extern bsp430_FreeRTOS_USCI usci_devices[];
+	extern const bsp430_FreeRTOS_USCI* const end_usci_devices;
+	
+	xComPort *port = usci_devices;
 	/* Locate an unused port */
-	port = prvComPorts;
-	while (port < prvComPorts_end && (port->flags & COM_PORT_ACTIVE)) {
+	while (port < end_usci_devices && (port->flags & COM_PORT_ACTIVE)) {
 		++port;
 	}
-	if (prvComPorts_end == port) {
+	if (end_usci_devices == port) {
 		return NULL;
 	}
 
@@ -177,11 +179,10 @@ prvBaudEnumToValue (eBaud baud_enum)
 xComPortHandle
 xSerialPortInit (eCOMPort ePort, eBaud eWantedBaud, eParity eWantedParity, eDataBits eWantedDataBits, eStopBits eWantedStopBits, unsigned portBASE_TYPE uxBufferLength)
 {
-	xComPort* port;
-	if (ePort >= prvCOMPortInvalid) {
+	xComPort* port = portToDevice(ePort);
+	if (! port) {
 		return NULL;
 	}
-	port = prvComPorts + (unsigned int)ePort;
 	if (port->flags & COM_PORT_ACTIVE) {
 		unconfigurePort_(port);
 	}
@@ -266,88 +267,3 @@ vSerialClose (xComPortHandle xPort)
 	}
 }
 
-/* Since the interrupt code is the same for all peripherals, on MCUs
- * with multiple USCI devices it is more space efficient to share it.
- * This does add an extra call/return for some minor cost in stack
- * space.
- *
- * Making the implementation function __c16__ ensures it's legitimate
- * to use portYIELD_FROM_ISR().
- *
- * Adding __always_inline__ supports maintainability by having a
- * single implementation but speed by forcing the implementation into
- * each handler.  It's a lot cleaner than defining the body as a
- * macro.  GCC will normally inline the code if there's only one call
- * point; there should be a configPORT_foo option to do so in other
- * cases. */
-
-static void
-#if __MSP430X__
-__attribute__ ( ( __c16__ ) )
-#endif /* CPUX */
-/* __attribute__((__always_inline__)) */
-usci_irq (xComPort* port)
-{
-	portBASE_TYPE yield = pdFALSE;
-	portBASE_TYPE rv = pdFALSE;
-	uint8_t c;
-
-	switch (port->usci->iv) {
-	default:
-	case USCI_NONE:
-		break;
-	case USCI_UCTXIFG:
-		rv = xQueueReceiveFromISR(port->tx_queue, &c, &yield);
-		if (0 == uxQueueMessagesWaiting(port->tx_queue)) {
-			signed portBASE_TYPE sema_yield = pdFALSE;
-			port->usci->ie &= ~UCTXIE;
-			xSemaphoreGiveFromISR(port->tx_idle_sema, &sema_yield);
-			yield |= sema_yield;
-		}
-		if (rv) {
-			++port->num_tx;
-			port->usci->txbuf = c;
-		}
-		break;
-	case USCI_UCRXIFG:
-		c = port->usci->rxbuf;
-		++port->num_rx;
-		rv = xQueueSendToFrontFromISR(port->rx_queue, &c, &yield);
-		break;
-	}
-	portYIELD_FROM_ISR(yield);
-}
-
-#if defined(__MSP430_HAS_USCI_A0__)
-static void
-__attribute__((__interrupt__(USCI_A0_VECTOR)))
-usci_a0_irq (void)
-{
-	usci_irq(prvComPorts + 0);
-}
-#endif /* __MSP430_HAS_USCI_A1__ */
-#if defined(__MSP430_HAS_USCI_A1__)
-static void
-__attribute__((__interrupt__(USCI_A1_VECTOR)))
-usci_a1_irq (void)
-{
-	usci_irq(prvComPorts + 1);
-}
-#endif /* __MSP430_HAS_USCI_A0__ */
-#if defined(__MSP430_HAS_USCI_A2__)
-static void
-__attribute__((__interrupt__(USCI_A2_VECTOR)))
-usci_a2_irq (void)
-{
-	usci_irq(prvComPorts + 2);
-}
-#endif /* __MSP430_HAS_USCI_A2__ */
-#if defined(__MSP430_HAS_USCI_A3__)
-static void
-__attribute__((__interrupt__(USCI_A3_VECTOR)))
-usci_a3_irq (void)
-{
-	usci_irq(prvComPorts + 3);
-}
-#endif /* __MSP430_HAS_USCI_A3__ */
-/* No current MCU has more than 4 USCI_A instances */

@@ -62,8 +62,15 @@ typedef struct bsp430_FreeRTOS_USCI {
 	unsigned long num_tx;
 } bsp430_FreeRTOS_USCI;
 
+/** Find the FreeRTOS USCI structure associated with the given USCI device
+ *
+ * @return The corresponding bsp430_FreeRTOS_USCI Device, or a null
+ * pointer if there is no such device. */
+bsp430_FreeRTOS_USCI*
+bsp430_usci_lookup (bsp430_devid_t devid);
+
 int
-bsp430_usci_set_config_function (int devnum,
+bsp430_usci_set_config_function (bsp430_devid_t devid,
 								 bsp430_config_fn config);
 
 /** Request and configure a USCI device in UART mode.
@@ -90,14 +97,14 @@ bsp430_usci_set_config_function (int devnum,
  * @return A pointer to the allocated and configured USCI peripheral
  * if successful; a null pointer if something went wrong. */
 bsp430_FreeRTOS_USCI*
-bsp430_usci_uart_configure (int devnum,
+bsp430_usci_uart_configure (bsp430_devid_t devid,
 							unsigned int control_word,
 							unsigned long baud,
 							xQueueHandle rx_queue,
 							xQueueHandle tx_queue);
 
 bsp430_FreeRTOS_USCI*
-bsp430_usci_spi_configure (int devnum,
+bsp430_usci_spi_configure (bsp430_devid_t devid,
 						   unsigned int control_word,
 						   unsigned int prescaler,
 						   xQueueHandle rx_queue,

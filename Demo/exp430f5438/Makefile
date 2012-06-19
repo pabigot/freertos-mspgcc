@@ -73,6 +73,7 @@ $(DEMO_PATH)/flash.c \
 $(BSP430_PATH)/utility/led.c \
 $(BSP430_PATH)/utility/console.c \
 $(BSP430_PATH)/clocks/ucs.c \
+$(BSP430_PATH)/5xx/usci.c \
 $(BSP430_PATH)/timers/timerA0.c \
 $(BSP430_PATH)/$(PLATFORM)/platform.c \
 $(BSP430_PATH)/$(PLATFORM)/serial.c \
