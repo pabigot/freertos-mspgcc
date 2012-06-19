@@ -168,6 +168,10 @@ static void prvSetupHardware( void )
 {
 	vBSP430platformSetup();
 
+	/* Enable console */
+	xConsoleConfigure(xSerialPortInit(serCOM2, ser9600, serNO_PARITY, serBITS_8, serSTOP_1, 0),
+					  500);
+
 	/* P11.0: ACLK ; P11.1: MCLK; P11.2: SMCLK ; all available on test
 	 * points */
 	P11SEL |= BIT0 | BIT1 | BIT2;

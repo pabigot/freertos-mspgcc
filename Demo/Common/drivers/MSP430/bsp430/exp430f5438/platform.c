@@ -2,7 +2,6 @@
 #include <bsp430/clocks/ucs.h>
 #include <bsp430/timers/timerA0.h>
 #include <bsp430/utility/led.h>
-#include <bsp430/utility/console.h>
 #include <bsp430/5xx/periph.h>
 #include "serial.h"
 
@@ -60,10 +59,4 @@ void vBSP430platformSetup ()
 
 	/* Enable basic timer */
 	vBSP430timerA0Configure();
-
-	/* Set up MCU-specific hardware for USCI */
-
-	/* Enable console */
-	xConsoleConfigure(xSerialPortInit(serCOM2, ser9600, serNO_PARITY, serBITS_8, serSTOP_1, 0),
-					  500);
 }
