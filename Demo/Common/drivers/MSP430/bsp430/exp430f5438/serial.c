@@ -102,7 +102,7 @@ unconfigurePort_ (xComPort* port)
 static xComPort*
 portToDevice (eCOMPort ePort)
 {
-	bsp430_devid_t devid;
+	int devid;
 	xComPort* port;
 
 	switch (ePort) {

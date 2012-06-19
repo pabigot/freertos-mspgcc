@@ -28,41 +28,43 @@ enum {
 #endif /* __MSP430_HAS_USCI_B3__ */
 };
 
+#define DEVID_TO_USCI(_devid) ((volatile bsp430_USCI *)(_devid))
+
 bsp430_FreeRTOS_USCI usci_devices[] = {
 #if defined(__MSP430_HAS_USCI_A0__)
-	{ .usci = (volatile bsp430_USCI *)__MSP430_BASEADDRESS_USCI_A0__ },
+	{ .usci = DEVID_TO_USCI(__MSP430_BASEADDRESS_USCI_A0__) },
 #endif /* __MSP430_HAS_USCI_A0__ */
 #if defined(__MSP430_HAS_USCI_A1__)
-	{ .usci = (volatile bsp430_USCI *)__MSP430_BASEADDRESS_USCI_A1__ },
+	{ .usci = DEVID_TO_USCI(__MSP430_BASEADDRESS_USCI_A1__) },
 #endif /* __MSP430_HAS_USCI_A1__ */
 #if defined(__MSP430_HAS_USCI_A2__)
-	{ .usci = (volatile bsp430_USCI *)__MSP430_BASEADDRESS_USCI_A2__ },
+	{ .usci = DEVID_TO_USCI(__MSP430_BASEADDRESS_USCI_A2__) },
 #endif /* __MSP430_HAS_USCI_A2__ */
 #if defined(__MSP430_HAS_USCI_A3__)
-	{ .usci = (volatile bsp430_USCI *)__MSP430_BASEADDRESS_USCI_A3__ },
+	{ .usci = DEVID_TO_USCI(__MSP430_BASEADDRESS_USCI_A3__) },
 #endif /* __MSP430_HAS_USCI_A3__ */
 #if defined(__MSP430_HAS_USCI_B0__)
-	{ .usci = (volatile bsp430_USCI *)__MSP430_BASEADDRESS_USCI_B0__ },
+	{ .usci = DEVID_TO_USCI(__MSP430_BASEADDRESS_USCI_B0__) },
 #endif /* __MSP430_HAS_USCI_B0__ */
 #if defined(__MSP430_HAS_USCI_B1__)
-	{ .usci = (volatile bsp430_USCI *)__MSP430_BASEADDRESS_USCI_B1__ },
+	{ .usci = DEVID_TO_USCI(__MSP430_BASEADDRESS_USCI_B1__) },
 #endif /* __MSP430_HAS_USCI_B1__ */
 #if defined(__MSP430_HAS_USCI_B2__)
-	{ .usci = (volatile bsp430_USCI *)__MSP430_BASEADDRESS_USCI_B2__ },
+	{ .usci = DEVID_TO_USCI(__MSP430_BASEADDRESS_USCI_B2__) },
 #endif /* __MSP430_HAS_USCI_B2__ */
 #if defined(__MSP430_HAS_USCI_B3__)
-	{ .usci = (volatile bsp430_USCI *)__MSP430_BASEADDRESS_USCI_B3__ },
+	{ .usci = DEVID_TO_USCI(__MSP430_BASEADDRESS_USCI_B3__) },
 #endif /* __MSP430_HAS_USCI_B3__ */
 };
 const bsp430_FreeRTOS_USCI* const end_usci_devices = usci_devices + sizeof(usci_devices)/sizeof(*usci_devices);
 
 bsp430_FreeRTOS_USCI*
-bsp430_usci_lookup (bsp430_devid_t devid)
+bsp430_usci_lookup (int devid)
 {
 	bsp430_FreeRTOS_USCI* device = usci_devices;
 	
 	while (device < end_usci_devices) {
-		if (device->devid == devid) {
+		if (device->usci == DEVID_TO_USCI(devid)) {
 			return device;
 		}
 		++device;
@@ -73,7 +75,7 @@ bsp430_usci_lookup (bsp430_devid_t devid)
 #if 0
 
 bsp430_FreeRTOS_USCI*
-bsp430_usci_uart_configure (bsp430_devid_t devid,
+bsp430_usci_uart_configure (int devid,
 							unsigned int control_word,
 							unsigned long baud,
 							xQueueHandle rx_queue,
@@ -149,7 +151,7 @@ bsp430_usci_uart_configure (bsp430_devid_t devid,
 
 
 int
-bsp430_usci_set_config_function (bsp430_devid_t devid,
+bsp430_usci_set_config_function (int devid,
 								 bsp430_config_fn config)
 {
 	bsp430_FreeRTOS_USCI* device = find_device(devnum);
