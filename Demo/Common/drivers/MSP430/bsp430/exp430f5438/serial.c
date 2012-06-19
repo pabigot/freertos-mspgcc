@@ -52,17 +52,15 @@ configurePort_ (xComPort* port,
 static void
 unconfigurePort_ (xComPort* port)
 {
-	port->usci->ctlw0 = UCSWRST;
-	vBSP430platformConfigurePeripheralPins ((int)(port->usci), 0);
-	if (0 != port->rx_queue) {
-		vQueueDelete(port->rx_queue);
-		port->rx_queue = 0;
+	xQueueHandle rx_queue = port->rx_queue;
+	xQueueHandle tx_queue = port->tx_queue;
+	(void)bsp430_usci_close(port);
+	if (tx_queue) {
+		vQueueDelete(tx_queue);
 	}
-	if (0 != port->tx_queue) {
-		vQueueDelete(port->tx_queue);
-		port->tx_queue = 0;
+	if (rx_queue) {
+		vQueueDelete(rx_queue);
 	}
-	port->flags = 0;
 }
 
 static xComPort*

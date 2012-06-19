@@ -74,17 +74,19 @@ bsp430_usci_lookup (int devid);
  * @return A pointer to the allocated and configured USCI peripheral
  * if successful; a null pointer if something went wrong. */
 bsp430_FreeRTOS_USCI*
-bsp430_usci_uart_configure (int devid,
-							unsigned int control_word,
-							unsigned long baud,
-							xQueueHandle rx_queue,
-							xQueueHandle tx_queue);
+bsp430_usci_uart_open (int devid,
+					   unsigned int control_word,
+					   unsigned long baud,
+					   xQueueHandle rx_queue,
+					   xQueueHandle tx_queue);
 
 bsp430_FreeRTOS_USCI*
-bsp430_usci_spi_configure (int devid,
-						   unsigned int control_word,
-						   unsigned int prescaler,
-						   xQueueHandle rx_queue,
-						   xQueueHandle tx_queue);
+bsp430_usci_spi_open (int devid,
+					  unsigned int control_word,
+					  unsigned int prescaler,
+					  xQueueHandle rx_queue,
+					  xQueueHandle tx_queue);
+
+int bsp430_usci_close (bsp430_FreeRTOS_USCI* device);
 
 #endif /* BSP430_5XX_USCI_H */

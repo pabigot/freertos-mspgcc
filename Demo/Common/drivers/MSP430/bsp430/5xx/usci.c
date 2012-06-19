@@ -1,5 +1,6 @@
 #include <bsp430/5xx/usci.h>
 #include <bsp430/clocks/ucs.h>
+#include <bsp430/common/platform.h>
 
 enum {
 #if defined(__MSP430_HAS_USCI_A0__)
@@ -127,7 +128,7 @@ bsp430_usci_uart_configure (int devid,
 	device->flags |= COM_PORT_ACTIVE;
 
 	/* Release the USCI and enable the interrupts.  Interrupts are
-	 * cleared when UCSWRST is set. */
+	 * disabled and cleared when UCSWRST is set. */
 	device->usci->ctlw0 &= ~UCSWRST;
 	if (0 != device->rx_queue) {
 		device->usci->ie |= UCRXIE;
@@ -135,15 +136,24 @@ bsp430_usci_uart_configure (int devid,
 
 	return device;
  failed:
+	bsp430_usci_close(device);
+	return NULL;
+}
+
+int
+bsp430_usci_close (bsp430_FreeRTOS_USCI* device)
+{
+	device->usci->ctlw0 = UCSWRST;
+	vBSP430platformConfigurePeripheralPins ((int)(device->usci), 0);
 	if (NULL != device->tx_idle_sema) {
 		vSemaphoreDelete(device->tx_idle_sema);
 		device->tx_idle_sema = 0;
 	}
 	device->tx_queue = 0;
 	device->rx_queue = 0;
-	return NULL;
+	device->flags = 0;
+	return 0;
 }
-
 
 /* Since the interrupt code is the same for all peripherals, on MCUs
  * with multiple USCI devices it is more space efficient to share it.
