@@ -83,26 +83,6 @@ portToDevice (eCOMPort ePort)
 	return bsp430_usci_lookup(devid);
 }
 
-
-xComPortHandle
-xSerialPortInitMinimal (unsigned long ulWantedBaud, unsigned portBASE_TYPE uxQueueLength)
-{
-	extern bsp430_FreeRTOS_USCI usci_devices[];
-	extern const bsp430_FreeRTOS_USCI* const end_usci_devices;
-	
-	xComPort *port = usci_devices;
-	/* Locate an unused port */
-	while (port < end_usci_devices && (port->flags & COM_PORT_ACTIVE)) {
-		++port;
-	}
-	if (end_usci_devices == port) {
-		return NULL;
-	}
-
-	port = configurePort_(port, ulWantedBaud, uxQueueLength);
-	return (xComPortHandle)port;
-}
-
 static unsigned long
 prvBaudEnumToValue (eBaud baud_enum)
 {
