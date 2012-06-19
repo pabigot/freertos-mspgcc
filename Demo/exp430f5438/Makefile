@@ -101,7 +101,7 @@ install: demo.elf
 
 %.d: %.c
 	@set -e; rm -f $@; \
-	 $(CC) -MM $(CPPFLAGS) $(CFLAGS) $< > $@.$$$$; \
+	 $(CC) -MM -MT$*.o $(CPPFLAGS) $(CFLAGS) $< > $@.$$$$; \
 	 sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
 	 rm -f $@.$$$$
 
