@@ -10,17 +10,6 @@
 
 struct bsp430_FreeRTOS_USCI;
 
-/** Configuration callback function type.
- *
- * If one of these is provided, the USCI interface will invoke it
- * whenever it enables or disables the peripheral.  The primary
- * purpose is to configure the corresponding shared pins to either
- * their peripheral or default state.
- *
- * A non-zero return value will cause configuration to fail.
- */
-typedef int (* bsp430_config_fn) (int enabledp);
-
 typedef struct bsp430_FreeRTOS_USCI {
 	/** Flags indicating various things; primarily whether anybody is
 	 * using the device. */
@@ -47,10 +36,6 @@ typedef struct bsp430_FreeRTOS_USCI {
 	 * a hand-off. */
 	xSemaphoreHandle tx_idle_sema;
 
-	/* Routine invoked at the appropriate time to configure pins for
-	 * peripheral function. */
-	bsp430_config_fn configurator;
-
 	/* Total number of received octets */
 	unsigned long num_rx;
 
@@ -64,10 +49,6 @@ typedef struct bsp430_FreeRTOS_USCI {
  * pointer if there is no such device. */
 bsp430_FreeRTOS_USCI*
 bsp430_usci_lookup (int devid);
-
-int
-bsp430_usci_set_config_function (int devid,
-								 bsp430_config_fn config);
 
 /** Request and configure a USCI device in UART mode.
  *

@@ -25,11 +25,6 @@ configurePort_ (xComPort* port,
 		return NULL;
 	}
 	
-	/* Reject if platform did not call portSerialAssignPins. */
-	if (! port->configurator) {
-		return NULL;
-	}
-
 	/* Reject if requested queue could not be allocated */
 	if (0 < bufsiz) {
 		port->rx_queue = xQueueCreate(bufsiz, sizeof(uint8_t));
@@ -67,7 +62,7 @@ configurePort_ (xComPort* port,
 	port->usci->brw = br;
 	port->usci->mctl = (0 * UCBRF_1) | (brs * UCBRS_1);
 
-	port->configurator(1);
+	vBSP430platformConfigurePeripheralPins ((int)(port->usci), 1);
 
 	/* Mark the port active */
 	port->num_rx = port->num_tx = 0;
@@ -87,7 +82,7 @@ static void
 unconfigurePort_ (xComPort* port)
 {
 	port->usci->ctlw0 = UCSWRST;
-	port->configurator(0);
+	vBSP430platformConfigurePeripheralPins ((int)(port->usci), 0);
 	if (0 != port->rx_queue) {
 		vQueueDelete(port->rx_queue);
 		port->rx_queue = 0;
@@ -117,19 +112,6 @@ portToDevice (eCOMPort ePort)
 	return bsp430_usci_lookup(devid);
 }
 
-
-signed portBASE_TYPE
-portSerialAssignPins (eCOMPort ePort,
-					  int (* configurator) (int))
-{
-	xComPort* port = portToDevice(ePort);
-
-	if (! port) {
-		return pdFAIL;
-	}
-	port->configurator = configurator;
-	return pdPASS;
-}
 
 xComPortHandle
 xSerialPortInitMinimal (unsigned long ulWantedBaud, unsigned portBASE_TYPE uxQueueLength)
