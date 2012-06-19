@@ -50,6 +50,9 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "serial.h"
 
+/** Like printf, but to platform console.
+ *
+ * Blocking output, interleaved calls will block */
 int
 __attribute__((__format__(printf, 1, 2)))
 cprintf (const char *string, ...);
