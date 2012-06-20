@@ -220,7 +220,7 @@ usci_irq (bsp430_FreeRTOS_USCI *port)
 	case USCI_UCRXIFG:
 		c = port->usci->rxbuf;
 		++port->num_rx;
-		rv = xQueueSendToFrontFromISR(port->rx_queue, &c, &yield);
+		rv = xQueueSendToBackFromISR(port->rx_queue, &c, &yield);
 		break;
 	}
 	portYIELD_FROM_ISR(yield);
