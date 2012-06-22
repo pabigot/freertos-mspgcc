@@ -88,6 +88,9 @@ extern "C" {
 /* Beware: this is only valid for data pointers, not function pointers */
 #define portPOINTER_SIZE_TYPE uintptr_t
 
+/* %u will not print a long int */
+#define portLU_PRINTF_SPECIFIER_REQUIRED 1
+
 #ifndef portACLK_FREQUENCY_HZ
 /* The tick ISR runs off the ACLK, not the MCLK.  This is normally 32
  * kiHz, but may be another value if the crystal is unavailable and
