@@ -43,9 +43,9 @@ LD=$(CROSS_COMPILE)ld
 AR=$(CROSS_COMPILE)ar
 
 # Can't use -f*-sections until SF 3534425 is fixed
-OPT_CFLAGS ?= -Os # -ffunction-sections -fdata-sections
+OPT_CFLAGS ?= -Os -ffunction-sections -fdata-sections
 WARN_CFLAGS = -Wall -Wno-main
-OPT_LDFLAGS ?= # -Wl,-gc-sections
+OPT_LDFLAGS ?= -Wl,-gc-sections
 
 CPPFLAGS = -I. -I$(BSP430_PATH) -I$(PORT_PATH)
 CPPFLAGS += -I$(BSP430_PATH)/$(PLATFORM) -I$(BSP430_PATH)/include
