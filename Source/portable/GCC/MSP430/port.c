@@ -155,30 +155,26 @@ volatile unsigned short usCriticalNesting = portINITIAL_CRITICAL_NESTING;
 #if __MSP430X__ & __MSP430_CPUX_TARGET_D20__
 
 #define portASM_STORE_CONTEXT					\
-	"movx.w	%0, r14		\n\t"					\
-	"push	r14			\n\t"					\
-	"mova	%1, r12		\n\t"					\
-	"mova	r1, @r12	\n\t"
+	"pushx.w	%0			\n\t"				\
+	"mova		%1, r12		\n\t"				\
+	"mova		r1, @r12	\n\t"
 
 #define portASM_RECALL_CONTEXT					\
 	"mova	%1, r12		\n\t"					\
 	"mova	@r12, r1	\n\t"					\
-	"pop	r15			\n\t"					\
-	"movx.w	r15, %0		\n\t"
+	"popx.w	%0			\n\t"
 
 #else
 
 #define portASM_STORE_CONTEXT					\
-	"mov.w	%0, r14		\n\t"					\
-	"push	r14			\n\t"					\
+	"push	%0			\n\t"					\
 	"mov.w	%1, r12		\n\t"					\
 	"mov.w	r1, @r12	\n\t"
 
 #define portASM_RECALL_CONTEXT					\
 	"mov.w	%1, r12		\n\t"					\
 	"mov.w	@r12, r1	\n\t"					\
-	"pop	r15			\n\t"					\
-	"mov.w	r15, %0		\n\t"
+	"pop	%0			\n\t"
 
 #endif
 
