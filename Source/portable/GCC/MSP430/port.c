@@ -112,8 +112,6 @@ volatile unsigned short usCriticalNesting = portINITIAL_CRITICAL_NESTING;
 #define portASM_POP_GEN_REGS					\
 	"popm.a		#12, r15	\n\t"
 
-#define portSAVED_REGISTER_TYPE uint20_t
-
 #elif __MSP430X__
 /* Save 16-bit registers if nobody seems to be using 20-bit code */
 
@@ -121,8 +119,6 @@ volatile unsigned short usCriticalNesting = portINITIAL_CRITICAL_NESTING;
 	"pushm.w	#12, r15	\n\t"
 #define portASM_POP_GEN_REGS					\
 	"popm.w		#12, r15	\n\t"
-
-#define portSAVED_REGISTER_TYPE portBASE_TYPE
 
 #else
 
@@ -154,8 +150,6 @@ volatile unsigned short usCriticalNesting = portINITIAL_CRITICAL_NESTING;
 	"pop	r14			\n\t"					\
 	"pop	r15			\n\t"					
 						   
-#define portSAVED_REGISTER_TYPE portBASE_TYPE
-
 #endif
 
 #if __MSP430X__ & __MSP430_CPUX_TARGET_D20__

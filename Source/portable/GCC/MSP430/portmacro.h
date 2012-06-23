@@ -88,6 +88,21 @@ extern "C" {
 /* Beware: this is only valid for data pointers, not function pointers */
 #define portPOINTER_SIZE_TYPE uintptr_t
 
+#if __MSP430X__ & ( __MSP430_CPUX_TARGET_SR20__ | __MSP430_CPUX_TARGET_ISR20__ )
+#define portSAVED_REGISTER_TYPE uint20_t
+#else /* __MSP430X__ */
+#define portSAVED_REGISTER_TYPE portBASE_TYPE
+#endif /* __MSP430X__ */
+
+/* Stack sizes are in words, but a major component can be the TCB.
+ * Since the size of the TCB depends on the memory model, abstract it.
+ * Keep in mind that the memory model also affects the size of return
+ * addresses.  Also consider adding space for two TCBs if the task has
+ * interrupts enabled, since an interrupt handler will need space for
+ * essentially the same information as a TCB, plus whatever its local
+ * stack requirements may be. */
+#define portTCB_SIZE_WORDS (3+12*sizeof(portSAVED_REGISTER_TYPE)/sizeof(portBASE_TYPE))
+
 /* %u will not print a long int */
 #define portLU_PRINTF_SPECIFIER_REQUIRED 1
 
