@@ -104,7 +104,7 @@ void vBSP430ledSet( unsigned portBASE_TYPE uxLED,
 	{
 		const xLEDDefn * pxLED = pxLEDDefn + uxLED;
 
-		vTaskSuspendAll();
+		taskENTER_CRITICAL();
 		if (xValue > 0)
 		{
 			*pxLED->pucPxOUT |= pxLED->ucBIT;
@@ -117,6 +117,6 @@ void vBSP430ledSet( unsigned portBASE_TYPE uxLED,
 		{
 			*pxLED->pucPxOUT &= ~pxLED->ucBIT;
 		}
-		xTaskResumeAll();
+		taskEXIT_CRITICAL();
 	}
 }
