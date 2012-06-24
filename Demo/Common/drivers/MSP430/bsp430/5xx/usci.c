@@ -206,7 +206,7 @@ usci_irq (bsp430_FreeRTOS_USCI *port)
 		break;
 	case USCI_UCTXIFG:
 		rv = xQueueReceiveFromISR(port->tx_queue, &c, &yield);
-		if (0 == uxQueueMessagesWaiting(port->tx_queue)) {
+		if (xQueueIsQueueEmptyFromISR(port->tx_queue)) {
 			signed portBASE_TYPE sema_yield = pdFALSE;
 			port->usci->ie &= ~UCTXIE;
 			xSemaphoreGiveFromISR(port->tx_idle_sema, &sema_yield);
