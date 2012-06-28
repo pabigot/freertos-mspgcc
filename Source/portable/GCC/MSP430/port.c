@@ -396,7 +396,7 @@ void vPortYield( void )
    pointers.  We also skip disabling interrupts since we're being
    called from an ISR. */
 void
-#if __MSP430X__
+#if (__MSPGCC__ > 20120406) && !!(__MSP430X__)
 __attribute__ ( ( __c16__ ) )
 #endif /* CPUX */
 __attribute__ ( ( __naked__ ) )

@@ -79,6 +79,9 @@
 #define MOVX    mov
 #endif /* any SR20 */
 
+#if (__MSPGCC__ > 20120406) && !!(__MSP430X__)
+        .cpux_target    bits=__MSP430X__ ; Encode build options for link-time validation
+#endif /* __MSP430X__ */        
 
 	.global usRegTest1Counter
 	.global usRegTest2Counter

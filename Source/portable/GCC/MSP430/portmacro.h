@@ -57,10 +57,10 @@
 #include <msp430.h>
 #include <stdint.h>
 
-#if __MSPGCC__ <= 20120406
-#error FreeRTOS-MSPGCC requires version 20120407 or higher
-#elif __MSPGCC__ == 20120606
-#error MSPGCC 20120606 is buggy, update to 20120618 or higher
+#if __MSPGCC__ < 20120406
+#error FreeRTOS-MSPGCC requires version 20120406 or higher
+#elif __MSPGCC__ > 20120406 && __MSPGCC__ < 20120627
+#error MSPGCC development releases are buggy, update to 20120627 or higher
 #endif
 
 #ifdef __cplusplus
@@ -171,7 +171,7 @@ extern volatile unsigned portSHORT usCriticalNesting;							\
 extern void vPortYield( void ) __attribute__ ( ( __naked__ ) );
 #define portYIELD()					vPortYield()
 void
-#if __MSP430X__
+#if (__MSPGCC__ > 20120406) && !!(__MSP430X__)
  __attribute__ ( ( __c16__ ) )
 #endif /* CPUX */
  __attribute__ ( ( __naked__ ) )
